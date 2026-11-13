@@ -218,7 +218,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   </div>
 
   <button class="wx-btn glass" id="wxBtn" aria-label="查看天气" aria-expanded="false">
-    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9.6 13.4V5.4a2.3 2.3 0 014.6 0v8a4.1 4.1 4.1 0 11-4.6 0z" /><path d="M11.9 10.2v5.2" opacity=".55" /></svg>
+    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9.6 13.4V5.4a2.3 2.3 2.3 0 014.6 0v8a4.1 4.1 4.1 0 11-4.6 0z" /><path d="M11.9 10.2v5.2" opacity=".55" /></svg>
   </button>
 
   <div class="wx glass" id="wxCard" role="dialog" aria-label="天气详情">
@@ -249,7 +249,7 @@ const SCENES=[
 {"id": "matterhorn", "name": "马特洪峰", "region": "瑞士 · 采尔马特", "lat": 45.98, "lon": 7.66},
 {"id": "jungfrau", "name": "少女峰", "region": "瑞士 · 伯尔尼", "lat": 46.55, "lon": 7.98},
 {"id": "rovaniemi", "name": "罗瓦涅米", "region": "芬兰 · 拉普兰", "lat": 66.5, "lon": 25.73},
-{"id": "longyearbyen", "name": "朗伊尔城", "region": "挪威 · 斯瓦尔巴", "lat":78.22, lon:15.62},
+{"id": "longyearbyen", "name": "朗伊尔城", "region": "挪威 · 斯瓦尔巴", "lat":78.22, "lon":15.62},
 {"id": "whistler", "name": "惠斯勒", "region": "加拿大 · 不列颠哥伦比亚", "lat": 50.11, "lon": -122.95}
 ];
 const FALLBACK = [
@@ -939,13 +939,4 @@ function compose(id) {
       g.add(spruce(2.6 + rnd() * 3.2, x, -84 - rnd() * 22, false));
     }
     for (let i = 0; i < 6; i++) {
-      const m = new THREE.Mesh(new THREE.SphereGeometry(2.6 + rnd() * 2.4, 9, 7), MAT.snow);
-      m.scale.set(2.4, 0.42, 1.1);
-      m.position.set((rnd() - .5) * 26, 0.05, -2 - rnd() * 10);
-      g.add(m);
-    }
-    if (cfg.street) { road(g, cfg); lamp(g, 5.2, 1, 4.6); }
-  }
-  if (cfg.kind === S || cfg.street) {
-    if (cfg.city) {
-      for (let i = 0; i < 1
+      const m = new THREE.Mesh(new THREE.SphereGeometry(2.6 + rnd() *
