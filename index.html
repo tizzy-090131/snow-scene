@@ -14,7 +14,7 @@ canvas{display:block}
 <body>
 <div id="tip">加载雪景...</div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-100-M/three.js/r160/three.min.js"></script>
 <script>
 const proxyBase = "https://snow-meteo-proxy.vercel.app/api/proxy-meteo";
 let scene,camera,renderer,snowList=[];
@@ -70,12 +70,13 @@ async function fetchWeather(){
 function animate(){
   requestAnimationFrame(animate);
   snowList.forEach(mesh=>{
-    mesh.geometry.attributes.position.array.forEach((v,i,arr)=>{
+    const arr = mesh.geometry.attributes.position.array;
+    for(let i=0;i<arr.length;i++){
       if(i%3===1){
         arr[i] -= 0.15;
         if(arr[i] < -10) arr[i] = 120;
       }
-    })
+    }
     mesh.geometry.attributes.position.needsUpdate = true;
   })
   renderer.render(scene,camera);
