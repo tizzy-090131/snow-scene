@@ -14,13 +14,17 @@ canvas{display:block}
 <body>
 <div id="tip">加载雪景...</div>
 
-<script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-100-M/three.js/r160/three.min.js"></script>
+<script src="https://cdn.jsdmirror.com/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 const proxyBase = "https://snow-meteo-proxy.vercel.app/api/proxy-meteo";
 let scene,camera,renderer,snowList=[];
 let weatherOk = false;
 
 function init3D(){
+  if (!window.THREE) {
+    document.getElementById("tip").innerText = "❌ Three.js 库加载失败";
+    return;
+  }
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(75,window.innerWidth / window.innerHeight,0.1,2000);
   camera.position.z = 80;
