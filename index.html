@@ -1,137 +1,297 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>SnowDay 雪景</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Global Natural Snow View</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;background:#080812;color:#fff;font-family:system-ui}
-#weatherCard{position:fixed;top:16px;right:16px;background:rgba(0,0,0,0.55);padding:10px 14px;border-radius:10px;font-size:14px;z-index:10;line-height:1.6}
-#tip{position:fixed;bottom:16px;left:16px;background:rgba(0,0,0,0.55);padding:6px 10px;border-radius:6px;font-size:13px;z-index:10}
-canvas{display:block}
+body{overflow:hidden;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif;width:100vw;height:100vh}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#bgCanvas{z-index:1}
+#starCanvas{z-index:2}
+#snowCanvas{z-index:3}
+
+#infoCard{
+  position:fixed;top:16px;right:16px;
+  background:rgba(10,14,28,0.58);
+  backdrop-filter:blur(16px);
+  padding:14px 18px;border-radius:14px;
+  border:1px solid rgba(255,255,255,0.12);
+  z-index:10;line-height:1.7;
+  min-width:200px;max-width:280px;
+}
+#infoCard .city-en{font-size:16px;font-weight:600;letter-spacing:0.5px}
+#infoCard .weather{font-size:13px;opacity:0.8;margin-top:2px}
+#infoCard .city-cn{font-size:13px;opacity:0.9;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12)}
+
+#bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(6,8,18,0.75);
+  backdrop-filter:blur(20px);
+  padding:12px 16px 16px;
+  border-top:1px solid rgba(255,255,255,0.1);
+  z-index:10;
+}
+#barTitle{font-size:11px;opacity:0.5;margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase}
+#cityList{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+#cityList::-webkit-scrollbar{height:4px}
+#cityList::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:2px}
+.cityItem{
+  flex-shrink:0;padding:8px 14px;border-radius:20px;
+  background:rgba(255,255,255,0.1);
+  font-size:13px;cursor:pointer;white-space:nowrap;
+  transition:background 0.25s;
+}
+.cityItem:hover{background:rgba(255,255,255,0.18)}
+.cityItem.active{background:#4a9eff;color:#fff}
 </style>
 </head>
 <body>
-<div id="weatherCard">正在获取天气...</div>
-<div id="tip">拖拽画面可旋转视角</div>
+<canvas id="bgCanvas"></canvas>
+<canvas id="starCanvas"></canvas>
+<canvas id="snowCanvas"></canvas>
 
-<script src="https://cdn.jsdmirror.com/npm/three@0.160.0/build/three.min.js"></script>
+<div id="infoCard">
+  <div class="city-en">Loading...</div>
+  <div class="weather">Fetching weather</div>
+</div>
+<div id="bar">
+  <div id="barTitle">Auto refresh every 20 min · realtime weather & snow status</div>
+  <div id="cityList"><span style="opacity:0.5;font-size:13px">loading cities...</span></div>
+</div>
+
 <script>
-// 你的天气代理地址
-const proxyBase = "https://snow-meteo-proxy.vercel.app/api/proxy-meteo";
-// 阿勒泰坐标
-const lat = 48.42, lon = 87.42;
-let scene,camera,renderer,snowMesh,snowCount = 800;
-let fallSpeed = 0.15;
+const CITY_LIST = [
+  {name:"Altay",lat:47.85,lon:88.12,scene:"altaMountain",cn:"阿勒泰｜阿尔泰山雪原松林"},
+  {name:"Changbai Mountain",lat:42.02,lon:128.08,scene:"craterLake",cn:"长白山｜天池雪峰林海"},
+  {name:"Shangri-La",lat:27.83,lon:99.70,scene:"plateauMountain",cn:"香格里拉｜横断雪山高原湖"},
+  {name:"Lhasa",lat:29.65,lon:91.14,scene:"tanggula",cn:"拉萨｜念青唐古拉远山"},
+  {name:"Hulunbuir",lat:49.21,lon:119.75,scene:"grassSnow",cn:"呼伦贝尔｜雪原湿地"},
+  {name:"Zhangjiakou",lat:40.82,lon:114.88,scene:"northMountain",cn:"张家口｜坝上山地森林"},
+  {name:"Urumqi",lat:43.83,lon:87.62,scene:"tianshan",cn:"乌鲁木齐｜天山山脉"},
+  {name:"Reykjavik",lat:64.13,lon:-21.90,scene:"icelandAurora",cn:"雷克雅未克｜极光火山冰川"},
+  {name:"Bergen",lat:60.40,lon:5.32,scene:"fjord",cn:"卑尔根｜挪威峡湾"},
+  {name:"Oslo",lat:59.91,lon:10.75,scene:"nordicForest",cn:"奥斯陆｜北欧湖林雪山"},
+  {name:"Zurich",lat:47.37,lon:8.54,scene:"alps",cn:"苏黎世｜阿尔卑斯山"},
+  {name:"Sapporo",lat:43.06,lon:141.35,scene:"hokkaido",cn:"札幌｜北海道雪原森林"},
+  {name:"Anchorage",lat:61.22,lon:-149.90,scene:"alaska",cn:"安克雷奇｜阿拉斯加冰川山脉"},
+  {name:"Montreal",lat:45.50,lon:-73.57,scene:"laurentian",cn:"蒙特利尔｜劳伦雪山林地"},
+  {name:"Helsinki",lat:60.17,lon:24.94,scene:"baltic",cn:"赫尔辛基｜波罗的海群岛冬夜"}
+];
+const SNOW_CODES = new Set([71,73,75,77,85,86]);
 
-// 天气代码对应文字
-function getWeatherText(code){
-  if(code === 0) return "晴朗";
-  if(code <= 3) return "多云";
-  if(code >= 45 && code <= 48) return "雾";
-  if(code >= 51 && code <= 67) return "降雨";
-  if(code === 71 || code === 73) return "小雪";
-  if(code === 75 || code === 77) return "大雪";
-  if(code >= 80 && code <= 82) return "阵雨";
-  if(code === 85 || code === 86) return "暴雪";
-  return "未知天气";
+const bgC = document.getElementById("bgCanvas").getContext("2d");
+const starC = document.getElementById("starCanvas").getContext("2d");
+const snowC = document.getElementById("snowCanvas").getContext("2d");
+let W,H;
+let stars = [];
+let flakes = [];
+let currentCity = null;
+let cityWeatherMap = new Map();
+
+function resize(){
+  W = bgC.canvas.width = starC.canvas.width = snowC.canvas.width = window.innerWidth;
+  H = bgC.canvas.height = starC.canvas.height = snowC.canvas.height = window.innerHeight;
+  buildStars();
+  if(currentCity) drawBackground(currentCity.scene);
 }
+window.addEventListener("resize",resize);
+resize();
 
-function init3D(){
-  if (!window.THREE) {
-    document.getElementById("weatherCard").innerText = "❌ 3D库加载失败";
-    return;
+// 星空：分批随机闪烁
+function buildStars(){
+  stars = [];
+  const n = Math.floor((W*H)/1400);
+  for(let i=0;i<n;i++){
+    stars.push({
+      x:Math.random()*W,
+      y:Math.random()*H*0.82,
+      r:Math.random()*1.1+0.25,
+      baseA:Math.random()*0.55+0.22,
+      spd:Math.random()*0.018+0.004,
+      phase:Math.random()*Math.PI*2
+    })
   }
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(75,window.innerWidth / window.innerHeight,0.1,2000);
-  camera.position.z = 80;
-  renderer = new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth,window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  createSnow(snowCount);
-
-  window.addEventListener("resize",()=>{
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth,window.innerHeight);
+}
+function drawStars(t){
+  starC.clearRect(0,0,W,H);
+  stars.forEach(s=>{
+    const a = s.baseA * (0.35 + 0.65*Math.sin(t*s.spd + s.phase));
+    starC.beginPath();
+    starC.arc(s.x,s.y,s.r,0,Math.PI*2);
+    starC.fillStyle = `rgba(255,255,255,${a})`;
+    starC.fill();
   })
-  animate();
 }
 
-function createSnow(count){
-  if(snowMesh) scene.remove(snowMesh);
-  const snowGeo = new THREE.BufferGeometry();
-  const pos = new Float32Array(count * 3);
-  for(let i=0;i<count;i++){
-    pos[i*3] = (Math.random()-0.5)*200;
-    pos[i*3+1] = Math.random()*120;
-    pos[i*3+2] = (Math.random()-0.5)*200;
+// 分层自然背景，不同城市切换地貌
+function drawBackground(scene){
+  bgC.clearRect(0,0,W,H);
+  let skyGrad;
+  switch(scene){
+    case "icelandAurora":
+      skyGrad = bgC.createLinearGradient(0,0,0,H);
+      skyGrad.addColorStop(0,"#050714");
+      skyGrad.addColorStop(0.45,"#0c2438");
+      skyGrad.addColorStop(0.7,"#123b3f");
+      skyGrad.addColorStop(1,"#0b1a2b");
+      break;
+    case "fjord":
+      skyGrad = bgC.createLinearGradient(0,0,0,H);
+      skyGrad.addColorStop(0,"#030612");
+      skyGrad.addColorStop(0.5,"#091830");
+      skyGrad.addColorStop(1,"#102548");
+      break;
+    default:
+      skyGrad = bgC.createLinearGradient(0,0,0,H);
+      skyGrad.addColorStop(0,"#020617");
+      skyGrad.addColorStop(0.45,"#0b1a3a");
+      skyGrad.addColorStop(1,"#1b2f5c");
   }
-  snowGeo.setAttribute("position",new THREE.BufferAttribute(pos,3));
-  const snowMat = new THREE.PointsMaterial({color:0xffffff,size:0.7,transparent:true,opacity:0.7});
-  snowMesh = new THREE.Points(snowGeo,snowMat);
-  scene.add(snowMesh);
-}
+  bgC.fillStyle = skyGrad;
+  bgC.fillRect(0,0,W,H);
 
-async function fetchWeather(){
-  const card = document.getElementById("weatherCard");
-  try{
-    // 同时请求：天气代码、温度、降雪量
-    const url = `${proxyBase}?latitude=${lat}&longitude=${lon}&current=weather_code,temperature_2m,snowfall`;
-    const res = await fetch(url);
-    if(!res.ok) throw new Error("代理返回错误");
-    const data = await res.json();
-    const cur = data.current;
-    const code = cur.weather_code;
-    const temp = cur.temperature_2m;
-    const snow = cur.snowfall || 0;
-
-    // 天气决定雪花密度和速度
-    let text = getWeatherText(code);
-    if(code >= 71 && code <= 77){
-      snowCount = 600 + snow*200;
-      fallSpeed = 0.15 + snow*0.2;
-    } else if(code >= 85 && code <= 86){
-      snowCount = 1800;
-      fallSpeed = 0.5;
-    } else if(code >= 51 && code <= 67){
-      snowCount = 200;
-      fallSpeed = 0.08;
-    } else {
-      snowCount = 80;
-      fallSpeed = 0.05;
-    }
-    createSnow(snowCount);
-
-    card.innerHTML = `阿勒泰<br>${text} ${temp}℃<br>降雪量：${snow}mm`;
-  }catch(e){
-    card.innerText = "⚠️ 天气加载失败\n模拟降雪场景";
-    console.error(e);
-    snowCount = 800;
-    fallSpeed = 0.15;
-    createSnow(snowCount);
+  // 远景雪山轮廓
+  bgC.fillStyle = "rgba(20,32,55,0.85)";
+  bgC.beginPath();
+  bgC.moveTo(0,H);
+  for(let x=0;x<=W;x+=120){
+    const h = H*0.42 + Math.sin(x*0.006 + scene.length)*H*0.14;
+    bgC.lineTo(x,h);
   }
+  bgC.lineTo(W,H);
+  bgC.fill();
+
+  // 中景暗色山林
+  bgC.fillStyle = "rgba(10,18,32,0.92)";
+  bgC.beginPath();
+  bgC.moveTo(0,H);
+  for(let x=0;x<=W;x+=80){
+    const h = H*0.62 + Math.sin(x*0.009)*H*0.09;
+    bgC.lineTo(x,h);
+  }
+  bgC.lineTo(W,H);
+  bgC.fill();
+
+  // 近地面雪坡
+  const groundGrad = bgC.createLinearGradient(0,H*0.78,0,H);
+  groundGrad.addColorStop(0,"rgba(25,34,48,0.65)");
+  groundGrad.addColorStop(1,"rgba(13,19,30,0.9)");
+  bgC.fillStyle = groundGrad;
+  bgC.fillRect(0,H*0.78,W,H*0.22);
 }
 
-function animate(){
+// 真实感雪花：大小分层、径向渐变、轻微横向漂移
+function setSnowByCode(wCode){
+  let cfg;
+  if(SNOW_CODES.has(wCode)){
+    if(wCode===71||wCode===73) cfg = {count:280,speed:0.06};
+    else if(wCode===75||wCode===77) cfg = {count:650,speed:0.14};
+    else cfg = {count:1100,speed:0.28};
+  }else cfg = {count:0,speed:0};
+  flakes = [];
+  for(let i=0;i<cfg.count;i++){
+    const layer = Math.random();
+    const r = layer<0.33 ? Math.random()*1.4+0.6 : layer<0.66 ? Math.random()*2.4+1.4 : Math.random()*3.8+2.2;
+    flakes.push({
+      x:Math.random()*W,
+      y:Math.random()*H,
+      r,
+      drift:Math.random()*1.3+0.4,
+      phase:Math.random()*Math.PI*2,
+      opacity:Math.random()*0.35+0.6
+    })
+  }
+  window.snowSpeed = cfg.speed;
+}
+function drawSnow(t){
+  snowC.clearRect(0,0,W,H);
+  flakes.forEach(f=>{
+    f.y += f.r * window.snowSpeed;
+    f.x += Math.sin(t*0.0012 + f.phase)*f.drift*0.28;
+    if(f.y > H+12){f.y=-12;f.x=Math.random()*W}
+    if(f.x>W+12) f.x=-12;
+    if(f.x<-12) f.x=W+12;
+    const g = snowC.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
+    g.addColorStop(0,`rgba(255,255,255,${f.opacity})`);
+    g.addColorStop(0.5,`rgba(255,255,255,${f.opacity*0.55})`);
+    g.addColorStop(1,"rgba(255,255,255,0)");
+    snowC.beginPath();
+    snowC.arc(f.x,f.y,f.r,0,Math.PI*2);
+    snowC.fillStyle = g;
+    snowC.fill();
+  })
+}
+
+function animate(t){
+  drawStars(t);
+  drawSnow(t);
   requestAnimationFrame(animate);
-  const arr = snowMesh.geometry.attributes.position.array;
-  for(let i=0;i<arr.length;i++){
-    if(i%3===1){
-      arr[i] -= fallSpeed;
-      if(arr[i] < -10) arr[i] = 120;
+}
+animate(0);
+
+// 拉取天气：批量获取，存入缓存，自动判断降雪状态
+async function fetchAllWeather(){
+  const latStr = CITY_LIST.map(c=>c.lat).join(",");
+  const lonStr = CITY_LIST.map(c=>c.lon).join(",");
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latStr}&longitude=${lonStr}&current=weather_code,temperature_2m&timezone=auto`;
+  try{
+    const res = await fetch(url,{signal:AbortSignal.timeout(16000)});
+    const json = await res.json();
+    cityWeatherMap.clear();
+    if(json.current_weather){
+      const arr = Array.isArray(json.current_weather) ? json.current_weather : [json.current_weather];
+      CITY_LIST.forEach((city,idx)=>{
+        const w = arr[idx];
+        if(w) cityWeatherMap.set(city.name,{code:w.weather_code,temp:w.temperature_2m});
+      })
     }
+    renderCityBar();
+    if(!currentCity) selectCity(CITY_LIST[0]);
+    else selectCity(currentCity);
+  }catch(e){
+    console.error("weather fetch fail",e);
   }
-  snowMesh.geometry.attributes.position.needsUpdate = true;
-  renderer.render(scene,camera);
 }
 
-(async ()=>{
-  init3D();
-  await fetchWeather();
-})();
+function renderCityBar(){
+  const wrap = document.getElementById("cityList");
+  wrap.innerHTML = "";
+  CITY_LIST.forEach(city=>{
+    const item = document.createElement("div");
+    item.className = "cityItem";
+    const w = cityWeatherMap.get(city.name);
+    const tag = w ? `${city.name} ${w.temp}°C` : city.name;
+    item.innerText = tag;
+    item.onclick = ()=>selectCity(city);
+    wrap.appendChild(item);
+  })
+}
+
+function selectCity(city){
+  currentCity = city;
+  document.querySelectorAll(".cityItem").forEach(el=>el.classList.toggle("active",el.innerText.startsWith(city.name)));
+  drawBackground(city.scene);
+  const w = cityWeatherMap.get(city.name);
+  const code = w ? w.code : 0;
+  setSnowByCode(code);
+  let weatherText;
+  if(SNOW_CODES.has(code)){
+    if(code===71||code===73) weatherText = "Light Snow";
+    else if(code===75||code===77) weatherText = "Heavy Snow";
+    else weatherText = "Blizzard";
+  }else weatherText = "Clear Night / No Snow";
+  document.getElementById("infoCard").innerHTML = `
+    <div class="city-en">${city.name}</div>
+    <div class="weather">${weatherText} · ${w?.temp??"--"}°C</div>
+    <div class="city-cn">${city.cn}</div>
+  `;
+}
+
+fetchAllWeather();
+// 每 20 分钟自动刷新，跟着气象源更新，跨天自动换降雪地点
+setInterval(fetchAllWeather, 20 * 60 * 1000);
 </script>
 </body>
 </html>
