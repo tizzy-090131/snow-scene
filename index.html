@@ -1,297 +1,951 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Global Natural Snow View</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>全球雪景</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23f2f4f6' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M12 2.5v19M4 7.2l16 9.6M4 16.8l16-9.6'/%3E%3C/g%3E%3C/svg%3E">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{overflow:hidden;background:#000;color:#fff;font-family:system-ui,-apple-system,sans-serif;width:100vw;height:100vh}
-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
-#bgCanvas{z-index:1}
-#starCanvas{z-index:2}
-#snowCanvas{z-index:3}
+:root{
+  --white:#F4F6F8;
+  --gray:#8A9099;
+  --gray-2:#4C525A;
+  --line:rgba(255,255,255,.14);
+  --line-soft:rgba(255,255,255,.07);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+html,body{
+  margin:0;padding:0;height:100%;background:#000;color:var(--white);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  overflow:hidden;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+:focus-visible{outline:1.5px solid rgba(255,255,255,.6);outline-offset:3px}
 
-#infoCard{
-  position:fixed;top:16px;right:16px;
-  background:rgba(10,14,28,0.58);
-  backdrop-filter:blur(16px);
-  padding:14px 18px;border-radius:14px;
-  border:1px solid rgba(255,255,255,0.12);
-  z-index:10;line-height:1.7;
-  min-width:200px;max-width:280px;
+#stage{position:fixed;inset:0;overflow:hidden;background:#000}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
+.vig{position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:
+    radial-gradient(118% 92% at 50% 46%, rgba(0,0,0,0) 38%, rgba(2,6,12,.36) 76%, rgba(2,5,10,.66) 100%),
+    linear-gradient(180deg, rgba(2,6,12,.30) 0%, rgba(0,0,0,0) 26%);
 }
-#infoCard .city-en{font-size:16px;font-weight:600;letter-spacing:0.5px}
-#infoCard .weather{font-size:13px;opacity:0.8;margin-top:2px}
-#infoCard .city-cn{font-size:13px;opacity:0.9;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.12)}
 
-#bar{
-  position:fixed;bottom:0;left:0;right:0;
-  background:rgba(6,8,18,0.75);
-  backdrop-filter:blur(20px);
-  padding:12px 16px 16px;
-  border-top:1px solid rgba(255,255,255,0.1);
-  z-index:10;
+.glass{
+  background:linear-gradient(180deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.055) 46%, rgba(255,255,255,.03) 100%);
+  border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    0 10px 30px rgba(0,0,0,.45);
 }
-#barTitle{font-size:11px;opacity:0.5;margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase}
-#cityList{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-#cityList::-webkit-scrollbar{height:4px}
-#cityList::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:2px}
-.cityItem{
-  flex-shrink:0;padding:8px 14px;border-radius:20px;
-  background:rgba(255,255,255,0.1);
-  font-size:13px;cursor:pointer;white-space:nowrap;
-  transition:background 0.25s;
+
+.pill{
+  position:absolute;top:calc(16px + env(safe-area-inset-top));left:16px;
+  height:42px;padding:0 14px 0 12px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:9px;
+  z-index:30;
+  transition:transform .3s var(--ease);
 }
-.cityItem:hover{background:rgba(255,255,255,0.18)}
-.cityItem.active{background:#4a9eff;color:#fff}
+.pill:active{transform:scale(.97)}
+.pill .dot{
+  width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.85);
+  box-shadow:0 0 10px rgba(255,255,255,.75);flex:none;
+}
+.pill .dot.off{background:rgba(255,255,255,.28);box-shadow:none}
+.pill .dot.warn{background:rgba(255,255,255,.55);box-shadow:0 0 8px rgba(255,255,255,.4)}
+.pill .txt{
+  font-size:13px;letter-spacing:.06em;white-space:nowrap;color:rgba(255,255,255,.94);
+}
+.pill .chev{width:11px;height:11px;opacity:.6;flex:none;display:block}
+.pill .chev svg{width:11px;height:11px;display:block}
+
+.place{
+  position:absolute;left:22px;bottom:calc(28px + env(safe-area-inset-bottom));
+  z-index:20;pointer-events:none;
+  transition:opacity .4s var(--ease);
+}
+.place .cn{
+  display:block;font-weight:300;
+  font-size:29px;letter-spacing:.16em;line-height:1.2;
+  text-shadow:0 2px 22px rgba(0,0,0,.95);
+  transition:opacity .4s var(--ease);
+}
+.place .meta{
+  display:block;margin-top:5px;
+  font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);
+  text-shadow:0 1px 14px rgba(0,0,0,.95);
+  transition:opacity .4s var(--ease);
+}
+.place.quiet .cn,.place.quiet .meta{opacity:.42}
+
+.wx-btn{
+  position:absolute;right:16px;bottom:calc(28px + env(safe-area-inset-bottom));
+  width:46px;height:46px;border-radius:50%;
+  display:grid;place-items:center;z-index:30;
+  transition:transform .3s var(--ease);
+}
+.wx-btn:active{transform:scale(.94)}
+.wx-btn svg{width:18px;height:18px;stroke:rgba(255,255,255,.8);fill:none;stroke-width:1.5}
+.wx-btn.on{background:linear-gradient(180deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.10) 100%)}
+
+.wx{
+  position:absolute;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));
+  width:218px;border-radius:18px;padding:14px 16px 15px;
+  z-index:29;transform-origin:100% 100%;
+  transform:translateY(6px) scale(.94);opacity:0;pointer-events:none;
+  transition:opacity .26s var(--ease),transform .32s var(--ease);
+}
+.wx.open{opacity:1;transform:none;pointer-events:auto}
+.wx .wtitle{
+  font-size:10px;letter-spacing:.22em;color:var(--gray);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.wx .wbig{margin-top:9px;display:flex;align-items:baseline;gap:8px}
+.wx .wbig .t{font-size:30px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wx .wbig .s{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.72)}
+.wx .wrows{margin-top:12px;display:grid;gap:7px}
+.wx .wr{
+  display:flex;justify-content:space-between;gap:10px;
+  font-size:11.5px;color:var(--gray);letter-spacing:.04em;
+  border-top:1px solid var(--line-soft);padding-top:7px;
+}
+.wx .wr b{font-weight:400;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
+
+.sheet-mask{
+  position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .32s var(--ease);
+}
+.sheet-mask.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:41;
+  max-height:74vh;display:flex;flex-direction:column;
+  border-radius:22px 22px 0 0;
+  background:linear-gradient(180deg, rgba(26,28,33,.88) 0%, rgba(11,12,15,.94) 100%);
+  -webkit-backdrop-filter:blur(28px) saturate(170%);
+  backdrop-filter:blur(28px) saturate(170%);
+  border-top:1px solid rgba(255,255,255,.14);
+  box-shadow:0 -18px 50px rgba(0,0,0,.55);
+  transform:translateY(101%);
+  transition:transform .42s var(--ease);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.open{transform:none}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px 10px;flex:none;
+}
+.sheet-head .h{font-size:11px;letter-spacing:.24em;color:var(--gray)}
+.sheet-head .n{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums}
+.sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px}
+.sheet-foot{flex:none;padding:0 10px calc(14px + env(safe-area-inset-bottom))}
+.grp{font-size:10px;letter-spacing:.22em;color:var(--gray-2);padding:14px 10px 6px}
+.row{
+  display:flex;align-items:center;gap:12px;width:100%;
+  min-height:56px;padding:10px 12px;border-radius:14px;
+  text-align:left;transition:background .2s;
+}
+.row:active{background:rgba(255,255,255,.09)}
+.row:hover{background:rgba(255,255,255,.05)}
+.row .nm{font-size:14.5px;letter-spacing:.08em;line-height:1.35}
+.row .rg{display:block;font-size:10px;letter-spacing:.16em;color:var(--gray-2);margin-top:2px}
+.row .rt{
+  margin-left:auto;font-size:12px;color:rgba(255,255,255,.72);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  display:flex;align-items:center;gap:8px;
+}
+.row .sd{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.8)}
+.row .sd.soon{background:rgba(255,255,255,.4);box-shadow:none}
+.row .sd.none{background:rgba(255,255,255,.16);box-shadow:none}
+.row.dim .nm{color:rgba(255,255,255,.55)}
+.row.cur{background:rgba(255,255,255,.07)}
+.grabber{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:8px auto -2px;flex:none}
+.demo-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:4px 10px 8px;padding:12px;border-radius:14px;
+  border:1px solid var(--line-soft);width:calc(100% - 20px);
+}
+.demo-row span{font-size:12px;letter-spacing:.08em;color:rgba(255,255,255,.7)}
+.toggle{
+  width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,.14);
+  position:relative;flex:none;transition:background .25s;
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+  background:rgba(255,255,255,.9);transition:transform .3s var(--ease);
+}
+.toggle[aria-checked="true"]{background:rgba(255,255,255,.55)}
+.toggle[aria-checked="true"]::after{transform:translateX(18px)}
+
+@media (min-width:768px){
+  .pill{top:22px;left:24px;height:44px}
+  .place{left:30px;bottom:34px}
+  .place .cn{font-size:33px}
+  .wx-btn{right:24px;bottom:34px}
+  .wx{right:24px;bottom:92px}
+  .sheet{left:auto;right:20px;bottom:20px;width:368px;border-radius:20px;
+    max-height:74vh;transform:translateY(14px) scale(.97);opacity:0;
+    transition:opacity .26s var(--ease),transform .3s var(--ease);
+    border:1px solid rgba(255,255,255,.14);}
+  .sheet.open{transform:none;opacity:1}
+  .sheet-mask{background:rgba(0,0,0,.26)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01s!important;animation-duration:.01s!important}
+}
 </style>
 </head>
 <body>
-<canvas id="bgCanvas"></canvas>
-<canvas id="starCanvas"></canvas>
-<canvas id="snowCanvas"></canvas>
 
-<div id="infoCard">
-  <div class="city-en">Loading...</div>
-  <div class="weather">Fetching weather</div>
-</div>
-<div id="bar">
-  <div id="barTitle">Auto refresh every 20 min · realtime weather & snow status</div>
-  <div id="cityList"><span style="opacity:0.5;font-size:13px">loading cities...</span></div>
+<div id="stage">
+  <div class="vig"></div>
+  <button class="pill glass" id="pill" aria-label="选择地点" aria-expanded="false">
+    <span class="dot warn" id="pillDot"></span>
+    <span class="txt" id="pillTxt">正在获取降雪…</span>
+    <span class="chev" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.6"><path d="M6 9l6 6 6-6" /></svg>
+    </span>
+  </button>
+
+  <div class="place" id="place">
+    <span class="cn" id="placeCn">—</span>
+    <span class="meta" id="placeMeta"></span>
+  </div>
+
+  <button class="wx-btn glass" id="wxBtn" aria-label="查看天气" aria-expanded="false">
+    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9.6 13.4V5.4a2.3 2.3 0 014.6 0v8a4.1 4.1 4.1 0 11-4.6 0z" /><path d="M11.9 10.2v5.2" opacity=".55" /></svg>
+  </button>
+
+  <div class="wx glass" id="wxCard" role="dialog" aria-label="天气详情">
+    <div class="wtitle"><span>此刻</span><span id="wxPlace"></span></div>
+    <div class="wbig"><span class="t" id="wxTemp">—</span><span class="s" id="wxCond"></span></div>
+    <div class="wrows" id="wxRows"></div>
+  </div>
 </div>
 
-<script>
-const CITY_LIST = [
-  {name:"Altay",lat:47.85,lon:88.12,scene:"altaMountain",cn:"阿勒泰｜阿尔泰山雪原松林"},
-  {name:"Changbai Mountain",lat:42.02,lon:128.08,scene:"craterLake",cn:"长白山｜天池雪峰林海"},
-  {name:"Shangri-La",lat:27.83,lon:99.70,scene:"plateauMountain",cn:"香格里拉｜横断雪山高原湖"},
-  {name:"Lhasa",lat:29.65,lon:91.14,scene:"tanggula",cn:"拉萨｜念青唐古拉远山"},
-  {name:"Hulunbuir",lat:49.21,lon:119.75,scene:"grassSnow",cn:"呼伦贝尔｜雪原湿地"},
-  {name:"Zhangjiakou",lat:40.82,lon:114.88,scene:"northMountain",cn:"张家口｜坝上山地森林"},
-  {name:"Urumqi",lat:43.83,lon:87.62,scene:"tianshan",cn:"乌鲁木齐｜天山山脉"},
-  {name:"Reykjavik",lat:64.13,lon:-21.90,scene:"icelandAurora",cn:"雷克雅未克｜极光火山冰川"},
-  {name:"Bergen",lat:60.40,lon:5.32,scene:"fjord",cn:"卑尔根｜挪威峡湾"},
-  {name:"Oslo",lat:59.91,lon:10.75,scene:"nordicForest",cn:"奥斯陆｜北欧湖林雪山"},
-  {name:"Zurich",lat:47.37,lon:8.54,scene:"alps",cn:"苏黎世｜阿尔卑斯山"},
-  {name:"Sapporo",lat:43.06,lon:141.35,scene:"hokkaido",cn:"札幌｜北海道雪原森林"},
-  {name:"Anchorage",lat:61.22,lon:-149.90,scene:"alaska",cn:"安克雷奇｜阿拉斯加冰川山脉"},
-  {name:"Montreal",lat:45.50,lon:-73.57,scene:"laurentian",cn:"蒙特利尔｜劳伦雪山林地"},
-  {name:"Helsinki",lat:60.17,lon:24.94,scene:"baltic",cn:"赫尔辛基｜波罗的海群岛冬夜"}
+<div class="sheet-mask" id="mask"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="选择地点">
+  <div class="grabber"></div>
+  <div class="sheet-head">
+    <span class="h">选择地点</span>
+    <span class="n" id="sheetCount"></span>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-foot" id="sheetFoot"></div>
+</div>
+
+<script id="scenes-data">
+const SCENES=[
+{"id": "fuji", "name": "富士山", "region": "日本 · 静冈县", "lat": 35.36, "lon": 138.73},
+{"id": "sapporo", "name": "札幌", "region": "日本 · 北海道", "lat": 43.06, "lon": 141.35},
+{"id": "changbai", "name": "长白山", "region": "中国 · 吉林", "lat": 42.0, "lon": 128.06},
+{"id": "tianshan", "name": "天山", "region": "中国 · 新疆", "lat": 43.79, "lon": 87.62},
+{"id": "potala", "name": "念青唐古拉", "region": "中国 · 拉萨", "lat": 29.66, "lon": 91.12},
+{"id": "matterhorn", "name": "马特洪峰", "region": "瑞士 · 采尔马特", "lat": 45.98, "lon": 7.66},
+{"id": "jungfrau", "name": "少女峰", "region": "瑞士 · 伯尔尼", "lat": 46.55, "lon": 7.98},
+{"id": "rovaniemi", "name": "罗瓦涅米", "region": "芬兰 · 拉普兰", "lat": 66.5, "lon": 25.73},
+{"id": "longyearbyen", "name": "朗伊尔城", "region": "挪威 · 斯瓦尔巴", "lat":78.22, lon:15.62},
+{"id": "whistler", "name": "惠斯勒", "region": "加拿大 · 不列颠哥伦比亚", "lat": 50.11, "lon": -122.95}
 ];
-const SNOW_CODES = new Set([71,73,75,77,85,86]);
-
-const bgC = document.getElementById("bgCanvas").getContext("2d");
-const starC = document.getElementById("starCanvas").getContext("2d");
-const snowC = document.getElementById("snowCanvas").getContext("2d");
-let W,H;
-let stars = [];
-let flakes = [];
-let currentCity = null;
-let cityWeatherMap = new Map();
-
-function resize(){
-  W = bgC.canvas.width = starC.canvas.width = snowC.canvas.width = window.innerWidth;
-  H = bgC.canvas.height = starC.canvas.height = snowC.canvas.height = window.innerHeight;
-  buildStars();
-  if(currentCity) drawBackground(currentCity.scene);
-}
-window.addEventListener("resize",resize);
-resize();
-
-// 星空：分批随机闪烁
-function buildStars(){
-  stars = [];
-  const n = Math.floor((W*H)/1400);
-  for(let i=0;i<n;i++){
-    stars.push({
-      x:Math.random()*W,
-      y:Math.random()*H*0.82,
-      r:Math.random()*1.1+0.25,
-      baseA:Math.random()*0.55+0.22,
-      spd:Math.random()*0.018+0.004,
-      phase:Math.random()*Math.PI*2
-    })
-  }
-}
-function drawStars(t){
-  starC.clearRect(0,0,W,H);
-  stars.forEach(s=>{
-    const a = s.baseA * (0.35 + 0.65*Math.sin(t*s.spd + s.phase));
-    starC.beginPath();
-    starC.arc(s.x,s.y,s.r,0,Math.PI*2);
-    starC.fillStyle = `rgba(255,255,255,${a})`;
-    starC.fill();
-  })
-}
-
-// 分层自然背景，不同城市切换地貌
-function drawBackground(scene){
-  bgC.clearRect(0,0,W,H);
-  let skyGrad;
-  switch(scene){
-    case "icelandAurora":
-      skyGrad = bgC.createLinearGradient(0,0,0,H);
-      skyGrad.addColorStop(0,"#050714");
-      skyGrad.addColorStop(0.45,"#0c2438");
-      skyGrad.addColorStop(0.7,"#123b3f");
-      skyGrad.addColorStop(1,"#0b1a2b");
-      break;
-    case "fjord":
-      skyGrad = bgC.createLinearGradient(0,0,0,H);
-      skyGrad.addColorStop(0,"#030612");
-      skyGrad.addColorStop(0.5,"#091830");
-      skyGrad.addColorStop(1,"#102548");
-      break;
-    default:
-      skyGrad = bgC.createLinearGradient(0,0,0,H);
-      skyGrad.addColorStop(0,"#020617");
-      skyGrad.addColorStop(0.45,"#0b1a3a");
-      skyGrad.addColorStop(1,"#1b2f5c");
-  }
-  bgC.fillStyle = skyGrad;
-  bgC.fillRect(0,0,W,H);
-
-  // 远景雪山轮廓
-  bgC.fillStyle = "rgba(20,32,55,0.85)";
-  bgC.beginPath();
-  bgC.moveTo(0,H);
-  for(let x=0;x<=W;x+=120){
-    const h = H*0.42 + Math.sin(x*0.006 + scene.length)*H*0.14;
-    bgC.lineTo(x,h);
-  }
-  bgC.lineTo(W,H);
-  bgC.fill();
-
-  // 中景暗色山林
-  bgC.fillStyle = "rgba(10,18,32,0.92)";
-  bgC.beginPath();
-  bgC.moveTo(0,H);
-  for(let x=0;x<=W;x+=80){
-    const h = H*0.62 + Math.sin(x*0.009)*H*0.09;
-    bgC.lineTo(x,h);
-  }
-  bgC.lineTo(W,H);
-  bgC.fill();
-
-  // 近地面雪坡
-  const groundGrad = bgC.createLinearGradient(0,H*0.78,0,H);
-  groundGrad.addColorStop(0,"rgba(25,34,48,0.65)");
-  groundGrad.addColorStop(1,"rgba(13,19,30,0.9)");
-  bgC.fillStyle = groundGrad;
-  bgC.fillRect(0,H*0.78,W,H*0.22);
-}
-
-// 真实感雪花：大小分层、径向渐变、轻微横向漂移
-function setSnowByCode(wCode){
-  let cfg;
-  if(SNOW_CODES.has(wCode)){
-    if(wCode===71||wCode===73) cfg = {count:280,speed:0.06};
-    else if(wCode===75||wCode===77) cfg = {count:650,speed:0.14};
-    else cfg = {count:1100,speed:0.28};
-  }else cfg = {count:0,speed:0};
-  flakes = [];
-  for(let i=0;i<cfg.count;i++){
-    const layer = Math.random();
-    const r = layer<0.33 ? Math.random()*1.4+0.6 : layer<0.66 ? Math.random()*2.4+1.4 : Math.random()*3.8+2.2;
-    flakes.push({
-      x:Math.random()*W,
-      y:Math.random()*H,
-      r,
-      drift:Math.random()*1.3+0.4,
-      phase:Math.random()*Math.PI*2,
-      opacity:Math.random()*0.35+0.6
-    })
-  }
-  window.snowSpeed = cfg.speed;
-}
-function drawSnow(t){
-  snowC.clearRect(0,0,W,H);
-  flakes.forEach(f=>{
-    f.y += f.r * window.snowSpeed;
-    f.x += Math.sin(t*0.0012 + f.phase)*f.drift*0.28;
-    if(f.y > H+12){f.y=-12;f.x=Math.random()*W}
-    if(f.x>W+12) f.x=-12;
-    if(f.x<-12) f.x=W+12;
-    const g = snowC.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
-    g.addColorStop(0,`rgba(255,255,255,${f.opacity})`);
-    g.addColorStop(0.5,`rgba(255,255,255,${f.opacity*0.55})`);
-    g.addColorStop(1,"rgba(255,255,255,0)");
-    snowC.beginPath();
-    snowC.arc(f.x,f.y,f.r,0,Math.PI*2);
-    snowC.fillStyle = g;
-    snowC.fill();
-  })
-}
-
-function animate(t){
-  drawStars(t);
-  drawSnow(t);
-  requestAnimationFrame(animate);
-}
-animate(0);
-
-// 拉取天气：批量获取，存入缓存，自动判断降雪状态
-async function fetchAllWeather(){
-  const latStr = CITY_LIST.map(c=>c.lat).join(",");
-  const lonStr = CITY_LIST.map(c=>c.lon).join(",");
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latStr}&longitude=${lonStr}&current=weather_code,temperature_2m&timezone=auto`;
-  try{
-    const res = await fetch(url,{signal:AbortSignal.timeout(16000)});
-    const json = await res.json();
-    cityWeatherMap.clear();
-    if(json.current_weather){
-      const arr = Array.isArray(json.current_weather) ? json.current_weather : [json.current_weather];
-      CITY_LIST.forEach((city,idx)=>{
-        const w = arr[idx];
-        if(w) cityWeatherMap.set(city.name,{code:w.weather_code,temp:w.temperature_2m});
-      })
-    }
-    renderCityBar();
-    if(!currentCity) selectCity(CITY_LIST[0]);
-    else selectCity(currentCity);
-  }catch(e){
-    console.error("weather fetch fail",e);
-  }
-}
-
-function renderCityBar(){
-  const wrap = document.getElementById("cityList");
-  wrap.innerHTML = "";
-  CITY_LIST.forEach(city=>{
-    const item = document.createElement("div");
-    item.className = "cityItem";
-    const w = cityWeatherMap.get(city.name);
-    const tag = w ? `${city.name} ${w.temp}°C` : city.name;
-    item.innerText = tag;
-    item.onclick = ()=>selectCity(city);
-    wrap.appendChild(item);
-  })
-}
-
-function selectCity(city){
-  currentCity = city;
-  document.querySelectorAll(".cityItem").forEach(el=>el.classList.toggle("active",el.innerText.startsWith(city.name)));
-  drawBackground(city.scene);
-  const w = cityWeatherMap.get(city.name);
-  const code = w ? w.code : 0;
-  setSnowByCode(code);
-  let weatherText;
-  if(SNOW_CODES.has(code)){
-    if(code===71||code===73) weatherText = "Light Snow";
-    else if(code===75||code===77) weatherText = "Heavy Snow";
-    else weatherText = "Blizzard";
-  }else weatherText = "Clear Night / No Snow";
-  document.getElementById("infoCard").innerHTML = `
-    <div class="city-en">${city.name}</div>
-    <div class="weather">${weatherText} · ${w?.temp??"--"}°C</div>
-    <div class="city-cn">${city.cn}</div>
-  `;
-}
-
-fetchAllWeather();
-// 每 20 分钟自动刷新，跟着气象源更新，跨天自动换降雪地点
-setInterval(fetchAllWeather, 20 * 60 * 1000);
+const FALLBACK = [
+ {id:'fuji',temp:-4.4,snowing:false,sleet:false,next:null,mm:0},
+ {id:'sapporo',temp:1.4,snowing:false,sleet:false,next:null,mm:0},
+ {id:'changbai',temp:-6.1,snowing:false,sleet:false,next:null,mm:0},
+ {id:'tianshan',temp:2.9,snowing:false,sleet:false,next:null,mm:0},
+ {id:'potala',temp:-2.8,snowing:false,sleet:false,next:null,mm:0},
+ {id:'matterhorn',temp:-9.0,snowing:false,sleet:false,next:null,mm:0},
+ {id:'jungfrau',temp:-10.5,snowing:false,sleet:false,next:null,mm:0},
+ {id:'rovaniemi',temp:-3.7,snowing:false,sleet:false,next:null,mm:0},
+ {id:'longyearbyen',temp:-12,snowing:true,sleet:false,next:null,mm:3.2},
+ {id:'whistler',temp:-1.0,snowing:false,sleet:false,next:null,mm:0}
+];
 </script>
-</body>
-</html>
+
+<script id="app-engine">
+(function(){
+'use strict';
+var SNOW_CODES = [71,73,75,77,85,86];
+var SLEET_CODES = [66,67,68,79];
+var CACHE_KEY = 'snowday.v2.cache';
+var CACHE_MIN = 20;
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var mv = { order:[], cur:-1, demo:false, source:'' };
+
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function hhmm(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  return pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function within(iso, h){
+  if(!iso) return false;
+  var t = new Date(iso).getTime();
+  if(isNaN(t)) return false;
+  var now = Date.now();
+  return t-now <= h*3600e3 && t-now > -3600e3;
+}
+function getJSON(url, ms){
+  var ctl = new AbortController();
+  var timer = setTimeout(function(){ ctl.abort(); }, ms||9000);
+  return fetch(url, {signal:ctl.signal})
+    .then(function(r){ clearTimeout(timer); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .catch(function(e){ clearTimeout(timer); throw e; });
+}
+function byId(id){ return document.getElementById(id); }
+
+function classify(p){
+  if(mv.demo) return 'snow';
+  if(p.snowing) return 'snow';
+  if(p.sleet) return 'sleet';
+  if(within(p.next, 24)) return 'soon';
+  return 'none';
+}
+function stLabel(st){
+  if(st==='snow') return mv.demo ? '演示降雪' : '正在下雪';
+  if(st==='sleet') return '雨夹雪';
+  if(st==='soon') return '即将下雪';
+  return '无降雪';
+}
+
+function fromOpenMeteo(){
+  var lat = SCENES.map(function(s){ return s.lat; }).join(',');
+  var lon = SCENES.map(function(s){ return s.lon; }).join(',');
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+            '&current=weather_code,temperature_2m,snowfall,wind_speed_10m'+
+            '&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC';
+  return getJSON(url, 10000).then(function(j){
+    var arr = Array.isArray(j) ? j : [j];
+    if(!arr.length) throw new Error('empty');
+    return { source:'Open-Meteo', places: arr.map(function(r, i){
+      var c = r.current || {};
+      var hr = r.hourly || {};
+      var times = hr.time || [], sf = hr.snowfall || [], hc = hr.weather_code || [];
+      var next = null, sum = 0, t0 = Date.now();
+      for(var k=0;k<times.length;k++){
+        var tt = new Date(times[k] + (times[k].length>16?'':'Z')).getTime();
+        if(tt-t0 < -3600e3) continue;
+        if(tt-t0 > 24*3600e3) break;
+        if(SNOW_CODES.indexOf(hc[k])>-1 || SLEET_CODES.indexOf(hc[k])>-1){
+          sum += (sf[k]||0);
+          if(!next) next = new Date(tt).toISOString();
+        }
+      }
+      return {
+        id: SCENES[i].id,
+        temp: (c.temperature_2m!=null ? Math.round(c.temperature_2m*10)/10 : null),
+        wind: (c.wind_speed_10m!=null ? Math.round(c.wind_speed_10m*10)/10 : null),
+        code: String(c.weather_code==null?'':c.weather_code),
+        snowing: SNOW_CODES.indexOf(c.weather_code)>-1,
+        sleet: SLEET_CODES.indexOf(c.weather_code)>-1,
+        next: next, mm: Math.round(sum*10)/10
+      };
+    })};
+  });
+}
+
+function apply(places, source){
+  mv.source = source;
+  mv.order = SCENES.map(function(s){
+    var p = null;
+    for(var k=0;k<places.length;k++){ if(places[k].id===s.id){ p = places[k]; break; } }
+    if(!p) p = {id:s.id, temp:null, next:null, mm:0};
+    return { scene:s, place:p, st: classify(p) };
+  });
+  buildSheet();
+  var best = pickDefault();
+  if(window.DEEP){
+    for(var d=0;d<mv.order.length;d++){
+      if(mv.order[d].scene.id === window.DEEP){ best = d; break; }
+    }
+  }
+  setPlace(best < 0 ? 0 : best, true);
+}
+
+function pickDefault(){
+  var iBest = -1, vBest = -1;
+  var seed = new Date().toISOString().slice(0,10);
+  mv.order.forEach(function(m, i){
+    var v = 0;
+    if(m.st==='snow') v = 1000 + (m.place.mm||0);
+    else if(m.st==='sleet') v = 900 + (m.place.mm||0);
+    else if(m.st==='soon') v = 500 - Math.min(400, Math.max(0, (new Date(m.place.next||0)-Date.now())/60e3));
+    v += (Math.abs(hash(seed + m.scene.id)) % 1000) / 1000;
+    if(v > vBest){ vBest = v; iBest = i; }
+  });
+  return iBest;
+}
+function hash(str){
+  var h = 0;
+  for(var i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return h;
+}
+
+function setPlace(i, instant){
+  if(i<0 || i>=mv.order.length) return;
+  var m = mv.order[i];
+  mv.cur = i;
+  var st = m.st;
+  window.VS_PENDING = [m.scene.id, st];
+  if(window.VS3D) window.VS3D.show(m.scene.id, st);
+  byId('placeCn').textContent = m.scene.name;
+  byId('placeMeta').textContent = m.scene.region;
+  byId('place').classList.toggle('quiet', !(st==='snow' || st==='sleet'));
+  setPill((st==='snow' || st==='sleet') ? 'on' : 'off', m.scene.name);
+  fillWeather(m);
+  if(!mv.weather) byId('wxCard').classList.remove('open');
+}
+function setPill(kind, txt){
+  var d = byId('pillDot');
+  d.className = 'dot' + (kind==='on' ? '' : (kind==='warn' ? ' warn' : ' off'));
+  byId('pillTxt').textContent = txt;
+}
+
+var COND = {
+  snow:'雪', sleet:'雨夹雪', none:'无降雪'
+};
+function fillWeather(m){
+  var p = m.place, st = m.st;
+  byId('wxPlace').textContent = m.scene.name;
+  byId('wxTemp').textContent = (p.temp!=null ? p.temp+'°' : '—');
+  byId('wxCond').textContent = st==='snow' ? (mv.demo?'演示':'正在下雪')
+    : st==='sleet' ? '雨夹雪'
+    : st==='soon' ? '即将下雪'
+    : '无降雪';
+  var rows = [
+    ['风速', p.wind!=null ? p.wind+' m/s' : '—'],
+    ['未来24小时降雪', p.mm ? p.mm+' cm' : '—'],
+    ['开始降雪', within(p.next,24) ? hhmm(p.next) : '—'],
+    ['状态', stLabel(st)]
+  ];
+  byId('wxRows').innerHTML = rows.map(function(r){
+    return '<div class="wr"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';
+  }).join('');
+}
+
+function buildSheet(){
+  var snow = [], soon = [], none = [];
+  mv.order.forEach(function(m, i){
+    if(m.st==='snow' || m.st==='sleet') snow.push([m,i]);
+    else if(m.st==='soon') soon.push([m,i]);
+    else none.push([m,i]);
+  });
+  soon.sort(function(a,b){ return new Date(a[0].place.next||0) - new Date(b[0].place.next||0); });
+  function rows(list, dotCls){
+    return list.map(function(x){
+      var m = x[0], i = x[1];
+      var t = (m.place.temp!=null ? m.place.temp+'°' : '');
+      var extra = m.st==='soon' && within(m.place.next,24) ? hhmm(m.place.next) : (m.place.mm ? m.place.mm+'cm' : '');
+      return '<button class="row'+(i===mv.cur?' cur':'')+(m.st==='none'?' dim':'')+'" data-i="'+i+'">'+
+        '<span><span class="nm">'+m.scene.name+'</span><span class="rg">'+m.scene.region+'</span></span>'+
+        '<span class="rt">'+(extra?'<span>'+extra+'</span>':'')+'<span>'+t+'</span><span class="sd '+dotCls+'"></span></span>'+
+      '</button>';
+    }).join('');
+  }
+  var html = '';
+  if(snow.length) html += '<div class="grp">正在下雪 · '+snow.length+'</div>'+rows(snow,'');
+  if(soon.length) html += '<div class="grp">即将下雪 · '+soon.length+'</div>'+rows(soon,'soon');
+  if(none.length) html += '<div class="grp">暂无降雪 · '+none.length+'</div>'+rows(none,'none');
+  byId('sheetCount').textContent = '';
+  byId('sheetBody').innerHTML = html;
+  byId('sheetFoot').innerHTML =
+    '<button class="demo-row" id="demoRow"><span>演示：全部地点开启下雪</span>'+
+    '<span class="toggle" role="switch" aria-checked="'+(mv.demo?'true':'false')+'" id="demoTog"></span></button>';
+  Array.prototype.forEach.call(byId('sheetBody').querySelectorAll('.row'), function(el){
+    el.addEventListener('click', function(){
+      setPlace(parseInt(el.getAttribute('data-i'),10), false);
+      closeSheet();
+    });
+  });
+  byId('demoRow').addEventListener('click', function(){
+    mv.demo = !mv.demo;
+    byId('demoTog').setAttribute('aria-checked', mv.demo ? 'true':'false');
+    mv.order = mv.order.map(function(m){ return { scene:m.scene, place:m.place, st: classify(m.place) }; });
+    buildSheet();
+    setPlace(mv.cur, false);
+  });
+}
+
+function openSheet(){
+  buildSheet();
+  byId('sheet').classList.add('open');
+  byId('mask').classList.add('open');
+  byId('pill').setAttribute('aria-expanded','true');
+}
+function closeSheet(){
+  byId('sheet').classList.remove('open');
+  byId('mask').classList.remove('open');
+  byId('pill').setAttribute('aria-expanded','false');
+}
+
+byId('pill').addEventListener('click', function(){
+  var open = byId('sheet').classList.contains('open');
+  if(open) closeSheet(); else openSheet();
+});
+byId('mask').addEventListener('click', closeSheet);
+byId('wxBtn').addEventListener('click', function(){
+  mv.weather = !mv.weather;
+  byId('wxCard').classList.toggle('open', mv.weather);
+  byId('wxBtn').classList.toggle('on', mv.weather);
+  byId('wxBtn').setAttribute('aria-expanded', mv.weather ? 'true':'false');
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    if(byId('sheet').classList.contains('open')) closeSheet();
+    else if(mv.weather){
+      mv.weather = false;
+      byId('wxCard').classList.remove('open');
+      byId('wxBtn').classList.remove('on');
+    }
+    return;
+  }
+  if(byId('sheet').classList.contains('open')) return;
+  if(e.key==='ArrowRight') setPlace((mv.cur+1)%mv.order.length, false);
+  if(e.key==='ArrowLeft') setPlace((mv.cur-1+mv.order.length)%mv.order.length, false);
+});
+
+var HS = location.hash.replace('#','').split('&');
+if(HS.indexOf('demo')>-1) mv.demo = true;
+window.DEEP = '';
+HS.forEach(function(kv){ if(kv.indexOf('p=')===0) window.DEEP = kv.slice(2); });
+
+function loadData(force){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){}
+  if(!force && cached && Date.now()-cached.ts < CACHE_MIN*60e3 && cached.places && cached.places.length===SCENES.length){
+    apply(cached.places, cached.source); return;
+  }
+  setPill('warn', '正在获取降雪…');
+  fromOpenMeteo()
+    .catch(function(){
+      apply(FALLBACK, '示例数据');
+    })
+    .then(function(res){
+      if(!res) return;
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), places:res.places, source:res.source})); }catch(e){}
+      apply(res.places, res.source);
+    });
+}
+
+setPlace(0, true);
+loadData(false);
+setInterval(function(){ loadData(true); }, CACHE_MIN*60e3);
+})();
+</script>
+
+<script type="importmap">{"imports":{"three":"https://fastly.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+const host = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.domElement.id = 'gl';
+host.insertBefore(renderer.domElement, host.firstChild);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x122339, 0.014);
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 600);
+
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: {
+    cTop: { value: new THREE.Color(0x081321) },
+    cMid: { value: new THREE.Color(0x16304c) },
+    cBot: { value: new THREE.Color(0x2b4a68) }
+  },
+  vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `
+    varying vec3 vP; uniform vec3 cTop; uniform vec3 cMid; uniform vec3 cBot;
+    void main(){
+      float h = clamp(vP.y, -0.1, 1.0);
+      vec3 c = mix(cBot, cMid, smoothstep(0.0, 0.34, h));
+      c = mix(c, cTop, smoothstep(0.34, 0.92, h));
+      gl_FragColor = vec4(c, 1.0);
+    }`
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 32, 20), skyMat);
+scene.add(sky);
+
+scene.add(new THREE.HemisphereLight(0x39566f, 0x0a141f, 0.18));
+const moon = new THREE.DirectionalLight(0xc2daf6, 1.45);
+moon.position.set(-38, 22, -10);
+scene.add(moon);
+
+const softTex = (() => {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 96;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(16, 48, 0, 16, 48, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,.95)');
+  gr.addColorStop(.55, 'rgba(255,255,255,.5)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.save(); g.translate(16, 48); g.scale(.72, 2.6); g.translate(-16, -48);
+  g.fillStyle = gr; g.beginPath(); g.arc(16, 48, 16, 0, 6.2832); g.fill(); g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const dotTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(.4, 'rgba(255,255,255,.55)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); return t;
+})();
+
+const snowLayers = [];
+function makeSnow(count, size, alpha, spread, height) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3] = (Math.random() - .5) * spread;
+    pos[i * 3 + 1] = Math.random() * height;
+    pos[i * 3 + 2] = (Math.random() - .5) * spread;
+    seed[i] = Math.random() * 100;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  const mat = new THREE.PointsMaterial({
+    size, map: softTex, transparent: true, opacity: alpha, depthWrite: false,
+    blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: true
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  const l = { pts, count, spread, height, speed: 0, seed };
+  snowLayers.push(l);
+  return l;
+}
+const snowFar = makeSnow(5200, 0.42, 0.34, 160, 80);
+const snowMid = makeSnow(3200, 0.8, 0.42, 120, 62);
+const snowNear = makeSnow(600, 1.5, 0.36, 95, 46);
+snowFar.speed = 1.5; snowMid.speed = 2.6; snowNear.speed = 4.0;
+
+const STAR_N = 5200;
+const starGeo = new THREE.BufferGeometry();
+{
+  const pos = new Float32Array(STAR_N * 3), size = new Float32Array(STAR_N),
+    seed = new Float32Array(STAR_N), amp = new Float32Array(STAR_N);
+  for (let i = 0; i < STAR_N; i++) {
+    const u = Math.random() * Math.PI * 2;
+    const phi = Math.pow(Math.random(), .7) * 1.42 + 0.05;
+    const r = 240;
+    pos[i * 3] = Math.cos(u) * Math.cos(phi) * r;
+    pos[i * 3 + 1] = Math.sin(phi) * r;
+    pos[i * 3 + 2] = Math.sin(u) * Math.cos(phi) * r;
+    size[i] = Math.random() < .07 ? 3.0 + Math.random() * 2.0 : 1.0 + Math.random() * 1.3;
+    seed[i] = Math.random() * 100;
+    amp[i] = Math.random() < .3 ? 1.0 : 0.15;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  starGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  starGeo.setAttribute('aAmp', new THREE.BufferAttribute(amp, 1));
+}
+const starMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uMap: { value: dotTex }, uFade: { value: 0 } },
+  vertexShader: `
+    attribute float aSize; attribute float aSeed; attribute float aAmp;
+    varying float vB; uniform float uTime;
+    void main(){
+      float t = uTime * 0.25 + aSeed * 6.2831;
+      float burst = pow(max(0.0, sin(t)), 16.0);
+      vB = (0.5 + 1.1 * burst * aAmp) * (0.7 + 0.3 * fract(aSeed * 5.13));
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = aSize * (300.0 / -mv.z) * 3.2;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    varying float vB; uniform sampler2D uMap; uniform float uFade;
+    void main(){
+      vec4 t = texture2D(uMap, gl_PointCoord);
+      gl_FragColor = vec4(vec3(0.88, 0.94, 1.0), t.a * vB * uFade);
+    }`
+});
+const stars = new THREE.Points(starGeo, starMat);
+stars.frustumCulled = false;
+scene.add(stars);
+
+const MAT = {
+  snow: new THREE.MeshStandardMaterial({ color: 0x8fa7c1, roughness: .92, metalness: 0 }),
+  snowBright: new THREE.MeshStandardMaterial({ color: 0xdbe8f6, roughness: .85 }),
+  needle: new THREE.MeshStandardMaterial({ color: 0x0f1c26, roughness: .95, flatShading: true }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x24190f, roughness: .9 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x080e15, roughness: .95 }),
+  roofSnow: new THREE.MeshStandardMaterial({ color: 0xcadcec, roughness: .9 }),
+  warm: new THREE.MeshStandardMaterial({ color: 0x201208, emissive: 0xffb066, emissiveIntensity: 1.6 }),
+  wall: new THREE.MeshStandardMaterial({ color: 0x1b2532, roughness: .9 })
+};
+
+function box(w, h, d, mat, x, y, z, ry) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); if (ry) m.rotation.y = ry; return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z); return m;
+}
+function coneG(r, h, seg, mat) { return new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); }
+
+function jaggedCone(r, hh, seg) {
+  const geo = new THREE.ConeGeometry(r, hh, seg, 3);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    if (y > -hh * 0.49) {
+      const k = 1 + (Math.random() - 0.5) * 0.22;
+      pos.setX(i, pos.getX(i) * k);
+      pos.setZ(i, pos.getZ(i) * k);
+    }
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, MAT.needle);
+}
+
+function spruce(h, x, z, tilt) {
+  const g = new THREE.Group();
+  const trunkH = h * 0.25;
+  g.add(cyl(h * 0.03, h * 0.055, trunkH, 6, MAT.wood, 0, trunkH / 2, 0));
+  const layers = [[h * 0.30, h * 0.26, 0.0], [h * 0.23, h * 0.26, 0.24], [h * 0.15, h * 0.30, 0.48]];
+  for (const [r, hh, lift] of layers) {
+    const y = trunkH + h * lift;
+    const c = jaggedCone(r, hh, 11);
+    c.position.set(0, y + hh * 0.5, 0);
+    c.rotation.y = Math.random() * 3;
+    g.add(c);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, hh * 0.42, 11), MAT.snowBright);
+    cap.position.set(0, y + hh * 0.86, 0);
+    g.add(cap);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = Math.random() * 6.28;
+  if (tilt) g.rotation.z = (Math.random() - .5) * 0.05;
+  g.scale.setScalar(0.94 + Math.random() * 0.22);
+  return g;
+}
+
+function lamp(g, x, z, h) {
+  const grp = new THREE.Group();
+  grp.add(cyl(0.10, 0.14, h, 7, MAT.wood, 0, h / 2, 0));
+  grp.add(box(1.5, 0.12, 0.12, MAT.wood, 0.55, h - 0.15, 0));
+  grp.add(box(0.16, 0.16, 0.16, MAT.dark, 1.15, h - 0.28, 0));
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.34, 10, 1, true), MAT.wood);
+  shade.position.set(1.15, h - 0.5, 0);
+  shade.rotation.x = Math.PI;
+  grp.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), MAT.warm);
+  bulb.position.set(1.15, h - 0.62, 0);
+  grp.add(bulb);
+  const light = new THREE.PointLight(0xffb877, 60, 34, 2);
+  light.position.set(1.15, h - 0.7, 0);
+  grp.add(light);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: dotTex, color: 0xffc08a, transparent: true, opacity: .6,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  glow.position.set(1.15, h - 0.6, 0);
+  glow.scale.setScalar(1.6);
+  grp.add(glow);
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(16, 16),
+    new THREE.MeshBasicMaterial({ map: dotTex, color: 0xffb877, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(1.15, 0.06, 0);
+  grp.add(pool);
+  grp.position.set(x, 0, z);
+  g.add(grp);
+}
+
+function fence(g, x0, z0, len, dirX) {
+  const grp = new THREE.Group();
+  const n = Math.round(len / 1.6);
+  for (let i = 0; i <= n; i++) {
+    const px = dirX ? x0 + i * (len / n) : x0;
+    const pz = dirX ? z0 : z0 + i * (len / n);
+    const hh = 1.25 + Math.random() * 0.15;
+    grp.add(box(0.14, hh, 0.14, MAT.wood, px, hh / 2, pz));
+    grp.add(box(0.34, 0.10, 0.34, MAT.snowBright, px, hh + 0.03, pz));
+    if (i < n) {
+      const sx = dirX ? (len / n) : 0, sz = dirX ? 0 : (len / n);
+      const mid = dirX ? px + sx / 2 : pz + sz / 2;
+      grp.add(box(dirX ? sx : 0.08, 0.09, dirX ? 0.08 : sz, MAT.wood, dirX ? mid : px, hh * 0.72, dirX ? pz : mid));
+      grp.add(box(dirX ? sx : 0.10, 0.10, dirX ? 0.10 : sz, MAT.wood, dirX ? mid : px, hh * 0.42, dirX ? pz : mid));
+    }
+  }
+  g.add(grp);
+}
+
+function cottage(g, x, z, s, ry) {
+  const grp = new THREE.Group();
+  grp.add(box(6 * s, 2.6 * s, 4.2 * s, MAT.wall, 0, 1.3 * s, 0));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(4.6 * s, 1.9 * s, 4), MAT.roofSnow);
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.set(1, 1, 0.72);
+  roof.position.set(0, 3.1 * s, 0);
+  grp.add(roof);
+  grp.add(box(0.75 * s, 0.95 * s, 0.05, MAT.warm, -1.2 * s, 1.35 * s, 2.1 * s));
+  grp.add(box(0.75 * s, 0.95 * s, 0.05, MAT.warm, 1.2 * s, 1.35 * s, 2.1 * s));
+  grp.position.set(x, 0, z);
+  grp.rotation.y = ry || 0;
+  g.add(grp);
+}
+
+function ground(cfg) {
+  const size = 420, seg = 170;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const base = new THREE.Color(0x24313f), bright = new THREE.Color(0xeef5fd), c = new THREE.Color();
+  const ridges = cfg.ridges || [];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let h = (Math.sin(x * .11 + cfg.seed) * .5 + Math.cos(z * .13 - cfg.seed) * .5) * .55;
+    h += Math.sin(x * .31 + z * .21) * .18 + Math.sin(x * 1.4) * .05 + Math.cos(z * 1.7) * .05;
+    for (const r of ridges) {
+      const d = Math.sqrt((x - r.x) ** 2 + (z - r.z) ** 2) / r.r;
+      if (d < 1) {
+        const shape = Math.pow(1 - d, r.sharp || 1.3);
+        const crag = 1 + Math.sin(Math.atan2(z - r.z, x - r.x) * 6) * 0.06 * shape
+          + Math.sin(x * 0.09 + z * 0.07) * 0.05 * shape;
+        h += r.h * shape * crag;
+      }
+    }
+    if (cfg.street) {
+      const ax = Math.abs(x);
+      if (ax < 6.5) h = 0;
+      else if (ax < 11) h *= (ax - 6.5) / 4.5;
+    }
+    const rr = Math.sqrt(x * x + (z - 4) * (z - 4));
+    if (rr > 48) h -= (rr - 48) * 0.22;
+    pos.setY(i, h);
+    const t = Math.min(1, Math.max(0, (h - 3) / 12));
+    c.copy(base).lerp(bright, 0.22 + 0.78 * Math.pow(t, 1.25));
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, emissive: 0x101c2a, emissiveIntensity: 1 }));
+  return mesh;
+}
+
+function road(g, cfg) {
+  const len = 120;
+  const grp = new THREE.Group();
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(10.5, len), new THREE.MeshStandardMaterial({ color: 0x869db4, roughness: .8 }));
+  surf.rotation.x = -Math.PI / 2;
+  surf.position.set(0, 0.02, -len / 2 + 8);
+  grp.add(surf);
+  for (const off of [-2.2, 2.2]) {
+    const t = new THREE.Mesh(new THREE.PlaneGeometry(0.55, len), new THREE.MeshStandardMaterial({ color: 0x6c8296, roughness: .7 }));
+    t.rotation.x = -Math.PI / 2;
+    t.position.set(off, 0.035, -len / 2 + 8);
+    grp.add(t);
+  }
+  const rnd = mulberry(cfg.seed + 5);
+  for (let i = 0; i < 22; i++) {
+    const side = i % 2 ? 1 : -1;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.45 + rnd() * 0.55, 8, 6), MAT.snow);
+    m.scale.set(2.6, 0.32, 1.4);
+    m.position.set(side * (6.0 + rnd() * 1.6), 0.02, -50 + i * 5.6 + rnd());
+    grp.add(m);
+  }
+  g.add(grp);
+}
+
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const M = 'mountain', S = 'street';
+const CFG = {
+  fuji: { kind: M, seed: 3, ridges: [{ x: 0, z: -132, h: 60, r: 44, sharp: 1.4 }, { x: -46, z: -100, h: 22, r: 34, sharp: 1.35 }, { x: 42, z: -102, h: 18, r: 32, sharp: 1.35 }] },
+  matterhorn: { kind: M, seed: 9, ridges: [{ x: 4, z: -96, h: 54, r: 44, sharp: 1.75 }, { x: -22, z: -50, h: 16, r: 26, sharp: 1.6 }] },
+  changbai: { kind: M, seed: 5, ridges: [{ x: 0, z: -100, h: 44, r: 60, sharp: 1.35 }, { x: -40, z: -56, h: 10, r: 22, sharp: 1.4 }] },
+  tianshan: { kind: M, seed: 12, ridges: [{ x: -26, z: -106, h: 50, r: 48, sharp: 1.45 }, { x: 18, z: -108, h: 54, r: 50, sharp: 1.5 }] },
+  jungfrau: { kind: M, seed: 21, ridges: [{ x: -14, z: -104, h: 50, r: 48, sharp: 1.45 }, { x: 22, z: -106, h: 54, r: 50, sharp: 1.5 }] },
+  whistler: { kind: M, seed: 31, ridges: [{ x: -18, z: -102, h: 46, r: 46, sharp: 1.4 }, { x: 20, z: -104, h: 50, r: 48, sharp: 1.45 }] },
+  potala: { kind: M, seed: 47, ridges: [{ x: -30, z: -108, h: 24, r: 32, sharp: 1.4 }, { x: 26, z: -68, h: 22, r: 30, sharp: 1.4 }], street: true },
+  rovaniemi: { kind: S, seed: 17, street: true, cottage: true },
+  longyearbyen: { kind: M, seed: 61, ridges: [{x:0,z:-110,h:42,r:52,sharp:1.5}] },
+  sapporo: { kind: S, seed: 61, street: true, city: true }
+};
+
+const cam = { az: 0.06, pitch: 0.10, look: 0, dist: 21, target: new THREE.Vector3(0, 2.4, -8), auto: 0.014, drag: false };
+let lastX = 0, lastY = 0;
+function applyCam() {
+  const cp = Math.cos(cam.pitch);
+  camera.position.set(
+    Math.sin(cam.az) * cp * cam.dist,
+    cam.target.y + Math.sin(cam.pitch) * cam.dist,
+    cam.target.z + Math.cos(cam.az) * cp * cam.dist
+  );
+  const look = cam.target.clone();
+  look.y += Math.tan(cam.look) * cam.dist;
+  camera.lookAt(look);
+}
+
+function bindDrag() {
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', e => {
+    cam.drag = true; lastX = e.clientX; lastY = e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!cam.drag) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    cam.az -= dx * 0.005;
+    cam.look = Math.min(0.34, Math.max(-0.22, cam.look + dy * 0.0032));
+    applyCam();
+  });
+  el.addEventListener('pointerup', () => cam.drag = false);
+  el.addEventListener('pointercancel', () => cam.drag = false);
+}
+
+let curGroup = null;
+function compose(id) {
+  const cfg = CFG[id] || CFG.fuji;
+  const rnd = mulberry(cfg.seed * 13 + 7);
+  if (curGroup) { scene.remove(curGroup); curGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  const g = new THREE.Group();
+  g.add(ground(cfg));
+  if (cfg.kind === M) {
+    g.add(spruce(9.0, -9.5, -12, true));
+    g.add(spruce(7.6, -15, -22, true));
+    g.add(spruce(8.6, 10.5, -14, true));
+    g.add(spruce(6.8, 15.5, -26, true));
+    for (let i = 0; i < 14; i++) {
+      const side = i % 2 ? 1 : -1;
+      const x = side * (11 + rnd() * 24);
+      const z = -38 - rnd() * 46;
+      g.add(spruce(3.4 + rnd() * 3.4, x, z, true));
+    }
+    for (let i = 0; i < 26; i++) {
+      const x = -46 + rnd() * 92;
+      g.add(spruce(2.6 + rnd() * 3.2, x, -84 - rnd() * 22, false));
+    }
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(2.6 + rnd() * 2.4, 9, 7), MAT.snow);
+      m.scale.set(2.4, 0.42, 1.1);
+      m.position.set((rnd() - .5) * 26, 0.05, -2 - rnd() * 10);
+      g.add(m);
+    }
+    if (cfg.street) { road(g, cfg); lamp(g, 5.2, 1, 4.6); }
+  }
+  if (cfg.kind === S || cfg.street) {
+    if (cfg.city) {
+      for (let i = 0; i < 1
