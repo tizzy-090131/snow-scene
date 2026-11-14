@@ -244,7 +244,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .msg-card .tip{font-size:10px;letter-spacing:.2em;color:var(--gray);margin-bottom:8px}
 .msg-card textarea{
   width:100%;height:60px;resize:none;border:1px solid var(--line);border-radius:11px;
-  background:rgba(255,255,255,.06);color:var(--white);font:inherit;font-size:13px;
+  background:rgba(255,255,255,.06);color:var(--white);font:inherit;font-size:16px;
   line-height:1.5;padding:9px 10px;outline:none;display:block;
 }
 .msg-card textarea::placeholder{color:rgba(255,255,255,.32)}
@@ -1386,13 +1386,11 @@ function closeCard(save) {
   const card = document.getElementById('msgCard');
   const ta = document.getElementById('msgText');
   const text = save ? (ta.value || '').trim().slice(0, 24) : '';
-  const pos = held.pos.clone();
   card.classList.remove('open');
   ta.value = '';
   ta.blur();
   releaseHeld();
   if (save && text) {
-    spawnMsg(pos, text);
     if (window.__snowSave && curSceneId) window.__snowSave(curSceneId, text);
   }
 }
@@ -2246,16 +2244,28 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 
-addEventListener('resize', () => {
+function fitCanvas(){
+  const w = Math.round(document.documentElement.clientWidth || innerWidth);
+  const h = Math.round(document.documentElement.clientHeight || innerHeight);
   const wasLand = camera.aspect > 1.25;
-  camera.aspect = innerWidth / innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(w, h);
   if ((camera.aspect > 1.25) !== wasLand) {
     curSceneId = null;
     if (window.VS_PENDING && window.VS3D) {
       window.VS3D.show(window.VS_PENDING[0], window.VS_PENDING[1], window.VS_PENDING[2], window.VS_PENDING[3], window.VS_PENDING[4]);
     }
+  }
+}
+addEventListener('orientationchange', () => setTimeout(fitCanvas, 300));
+addEventListener('resize', () => setTimeout(fitCanvas, 60));
+setTimeout(fitCanvas, 0);
+
+document.addEventListener('focusout', (e) => {
+  if (e.target && e.target.id === 'msgText') {
+    setTimeout(fitCanvas, 120);
+    setTimeout(fitCanvas, 600);
   }
 });
 
