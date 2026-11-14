@@ -166,8 +166,9 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   transform:translateY(101%);
   transition:transform .42s var(--ease);
   padding-bottom:env(safe-area-inset-bottom);
+  pointer-events:none;
 }
-.sheet.open{transform:none}
+.sheet.open{transform:none;pointer-events:auto}
 .sheet-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:14px 20px 10px;flex:none;
@@ -853,6 +854,7 @@ function spruce(h, x, z, tilt) {
 }
 
 /* 暖光路灯：木杆 + 吊灯 + 光斑 + 地面光池 */
+const lampRefs = [];
 function lamp(g, x, z, h) {
   const grp = new THREE.Group();
   grp.add(cyl(0.10, 0.14, h, 7, MAT.wood, 0, h / 2, 0));
@@ -862,7 +864,8 @@ function lamp(g, x, z, h) {
   shade.position.set(1.15, h - 0.5, 0);
   shade.rotation.x = Math.PI;
   grp.add(shade);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), MAT.warm);
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0x201208, emissive: 0xffb066, emissiveIntensity: 1.6 });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), bulbMat);
   bulb.position.set(1.15, h - 0.62, 0);
   grp.add(bulb);
 
@@ -876,6 +879,8 @@ function lamp(g, x, z, h) {
   }));
   glow.position.set(1.15, h - 0.6, 0);
   glow.scale.setScalar(1.6);
+
+  lampRefs.push({ light, glow, bulbMat, off: Math.abs(x) * 2.15 + Math.abs(z) * 0.6 });
   grp.add(glow);
 
   /* 地面光池 */
@@ -1099,17 +1104,16 @@ function stationSign(g, name, sub) {
   let hh = 0;
   const t = (name || '') + (sub || '');
   for (let i = 0; i < t.length; i++) hh = (hh * 31 + t.charCodeAt(i)) | 0;
-  const pal = ['#5fd3d0', '#ffb35c', '#8fb8ff', '#e88fa8', '#7ee0a8', '#c9a6ff', '#ffd166', '#6ec6ff'];
-  const accent = pal[Math.abs(hh) % pal.length];
+  const accent = '#dbe3ec';
   const num = ('0' + (1 + Math.abs(hh) % 12)).slice(-2);
 
   const bg = x.createLinearGradient(0, 0, 0, 480);
-  bg.addColorStop(0, '#16324a');
-  bg.addColorStop(1, '#07131e');
+  bg.addColorStop(0, '#1a1e24');
+  bg.addColorStop(1, '#080a0d');
   x.fillStyle = bg;
   x.fillRect(0, 0, 320, 480);
 
-  x.strokeStyle = 'rgba(206,232,250,.65)';
+  x.strokeStyle = 'rgba(208,216,226,.55)';
   x.lineWidth = 5;
   x.strokeRect(4, 4, 312, 472);
   x.fillStyle = accent;
@@ -1126,7 +1130,7 @@ function stationSign(g, name, sub) {
   };
   x.fillStyle = accent;
   rr(120, 42, 80, 44, 10); x.fill();
-  x.fillStyle = 'rgba(7,19,30,.85)';
+  x.fillStyle = 'rgba(8,10,13,.9)';
   rr(130, 52, 24, 18, 4); x.fill();
   rr(164, 52, 26, 18, 4); x.fill();
   x.fillStyle = accent;
@@ -1146,11 +1150,11 @@ function stationSign(g, name, sub) {
   } else {
     x.fillText(nm, 160, 192);
   }
-  x.fillStyle = 'rgba(214,234,250,.95)';
+  x.fillStyle = 'rgba(196,204,214,.9)';
   x.font = '20px "Noto Serif CJK SC","PingFang SC","Microsoft YaHei",sans-serif';
   x.fillText(sub || '', 160, two ? 268 : 236);
 
-  x.strokeStyle = 'rgba(190,214,236,.35)';
+  x.strokeStyle = 'rgba(196,204,214,.28)';
   x.lineWidth = 2;
   x.beginPath(); x.moveTo(70, two ? 286 : 266); x.lineTo(250, two ? 286 : 266); x.stroke();
 
@@ -1365,8 +1369,13 @@ function buildBus(g) {
   busRef.wheels = wheels;
   busRef.from = 14.4;
   busRef.to = 2.1;
+  busRef.exit = -14.0;
   busRef.t = 0;
   busRef.dur = 4.4;
+  busRef.hold = 1.8;
+  busRef.outDur = 4.6;
+  busRef.phase = 'in';
+  busRef.wait = 0;
   grp.position.set(busRef.from, 0, -20);
 }
 
@@ -1407,7 +1416,11 @@ function bindDrag() {
 /* ================= 组装 ================= */
 let curGroup = null;
 
+let curSceneId = '';
 function compose(id, name, sub) {
+  if (curGroup && id === curSceneId) return;
+  curSceneId = id;
+  lampRefs.length = 0;
   if (curGroup) { scene.remove(curGroup); curGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   const rnd = mulberry(137);
   const g = new THREE.Group();
@@ -1458,6 +1471,12 @@ function setWeather(state, mm) {
 
 /* ================= 主循环 ================= */
 let last = performance.now();
+function flick(t, off) {
+  const p = (t + off + 4.1) % 8.2;
+  if (p > .8) return 1;
+  return .26 + .74 * Math.abs(Math.sin((p / .8) * Math.PI * 3));
+}
+
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const t = now / 1000;
@@ -1485,20 +1504,35 @@ function tick(now) {
     l.pts.geometry.attributes.position.needsUpdate = true;
   }
 
-  const bloom = .62 + .38 * Math.pow(.5 + .5 * Math.sin(t * 1.05), 1.4);
-  if (stopRef.lamp) stopRef.lamp.intensity = 40 * bloom;
-  if (stopRef.signMat) stopRef.signMat.emissiveIntensity = .85 + .95 * bloom;
-  if (stopRef.barMat) stopRef.barMat.emissiveIntensity = .7 + .8 * bloom;
-  if (stopRef.glow) stopRef.glow.material.opacity = .2 + .26 * bloom;
-  if (stopRef.signGlow) stopRef.signGlow.material.opacity = .2 + .22 * bloom;
-  if (stopRef.pool) stopRef.pool.material.opacity = .1 + .1 * bloom;
+  const fl = flick(t, 0);
+  if (stopRef.lamp) stopRef.lamp.intensity = 40 * fl;
+  if (stopRef.barMat) stopRef.barMat.emissiveIntensity = .6 + .8 * fl;
+  if (stopRef.glow) stopRef.glow.material.opacity = .16 + .3 * fl;
+  if (stopRef.pool) stopRef.pool.material.opacity = .07 + .12 * fl;
+  for (const L of lampRefs) {
+    const f = flick(t, L.off);
+    L.light.intensity = 40 * f;
+    L.bulbMat.emissiveIntensity = .9 + .8 * f;
+    L.glow.material.opacity = .22 + .34 * f;
+  }
 
-  if (busRef.grp && busRef.t < 1) {
-    busRef.t = Math.min(1, busRef.t + dt / busRef.dur);
-    const e = 1 - Math.pow(1 - busRef.t, 3);
-    busRef.grp.position.x = busRef.from + (busRef.to - busRef.from) * e;
-    const spin = (1 - busRef.t) * 9 * dt;
-    busRef.wheels.forEach(w => { w.rotation.z -= spin; });
+  if (busRef.grp && busRef.phase !== 'done') {
+    if (busRef.phase === 'in') {
+      busRef.t = Math.min(1, busRef.t + dt / busRef.dur);
+      const e = 1 - Math.pow(1 - busRef.t, 3);
+      busRef.grp.position.x = busRef.from + (busRef.to - busRef.from) * e;
+      busRef.wheels.forEach(w => { w.rotation.z -= (1 - busRef.t) * 9 * dt; });
+      if (busRef.t >= 1) { busRef.phase = 'hold'; busRef.wait = 0; }
+    } else if (busRef.phase === 'hold') {
+      busRef.wait += dt;
+      if (busRef.wait >= busRef.hold) { busRef.phase = 'out'; busRef.t = 0; }
+    } else if (busRef.phase === 'out') {
+      busRef.t = Math.min(1, busRef.t + dt / busRef.outDur);
+      const e = busRef.t * busRef.t * busRef.t;
+      busRef.grp.position.x = busRef.to + (busRef.exit - busRef.to) * e;
+      busRef.wheels.forEach(w => { w.rotation.z -= busRef.t * 11 * dt; });
+      if (busRef.t >= 1) busRef.phase = 'done';
+    }
   }
 
   if (snowStrength > 0) {
