@@ -686,6 +686,9 @@ function closeSheet(){
 }
 
 /* ===== 留言 ===== */
+var SB_URL = '';
+var SB_KEY = '';
+var BRIDGE_URL = 'https://snowday-d4gt1l3cq457e0d9e-1499627436.tcloudbaseapp.com/bridge.html';
 var CLOUD_ENV = 'snowday-d4gt1l3cq457e0d9e';
 var MSG_KEY = 'snowday_msgs_v1';
 var SEED_MSG = {
@@ -713,7 +716,7 @@ function loadMsgs(){
   }catch(e){ return {}; }
 }
 var msgs = loadMsgs();
-if(!CLOUD_ENV){
+if(!CLOUD_ENV && !BRIDGE_URL){
   Object.keys(SEED_MSG).forEach(function(k){
     var cur = msgs[k];
     if(!cur || !cur.length) msgs[k] = SEED_MSG[k].slice();
@@ -747,6 +750,81 @@ function withTimeout(promise, ms, tag){
 function cloudBase(){
   return 'https://' + CLOUD_ENV + '.api.tcloudbasegateway.com';
 }
+function sbHeaders(extra){
+  var h = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+  if(extra) for(var k in extra) h[k] = extra[k];
+  return h;
+}
+function sbList(pid){
+  return withTimeout(
+    fetch(SB_URL + '/rest/v1/msgs?select=text&pid=eq.' + encodeURIComponent(pid) + '&order=ts.desc&limit=50', {
+      headers: sbHeaders()
+    }).then(function(r){
+      if(!r.ok) throw new Error('http' + r.status);
+      return r.json();
+    }), 9000, 'list').then(function(rows){
+      return (rows || []).map(function(x){ return String(x.text || ''); });
+    });
+}
+function sbAdd(pid, text){
+  return withTimeout(
+    fetch(SB_URL + '/rest/v1/msgs', {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ pid: pid, text: text })
+    }).then(function(r){
+      if(!r.ok) throw new Error('http' + r.status);
+      return true;
+    }), 9000, 'add');
+}
+var bridgeFrame = null, bridgeP = null, bridgeSeq = 0, bridgeWait = {};
+function bridgeEnsure(){
+  if(bridgeP) return bridgeP;
+  bridgeP = new Promise(function(res, rej){
+    var f = document.createElement('iframe');
+    f.setAttribute('aria-hidden','true');
+    f.tabIndex = -1;
+    f.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:0';
+    f.src = BRIDGE_URL;
+    function onMsg(ev){
+      var d = ev.data;
+      if(!d || typeof d !== 'object' || d.__snow !== 1) return;
+      if(d.type === 'ready'){
+        res(f);
+        return;
+      }
+      if(d.id && bridgeWait[d.id]){
+        bridgeWait[d.id](d);
+        delete bridgeWait[d.id];
+      }
+    }
+    window.addEventListener('message', onMsg);
+    document.body.appendChild(f);
+    bridgeFrame = f;
+    setTimeout(function(){ rej(new Error('bridge-timeout')); }, 12000);
+  }).catch(function(e){
+    bridgeP = null;
+    throw e;
+  });
+  return bridgeP;
+}
+function bridgeCall(op, payload){
+  return bridgeEnsure().then(function(f){
+    return new Promise(function(res, rej){
+      var id = 'q' + (++bridgeSeq) + Date.now().toString(36);
+      bridgeWait[id] = function(d){
+        if(d.ok) res(d.data);
+        else rej(new Error(d.err || 'bridge'));
+      };
+      f.contentWindow.postMessage(Object.assign({ __snow: 1, id: id, op: op }, payload || {}), '*');
+      setTimeout(function(){
+        if(bridgeWait[id]){ delete bridgeWait[id]; rej(new Error('timeout')); }
+      }, 9000);
+    });
+  });
+}
+function bridgeList(pid){ return bridgeCall('list', { pid: pid }); }
+function bridgeAdd(pid, text){ return bridgeCall('add', { pid: pid, text: text }); }
 function deviceId(){
   var k = 'snowday_dev_id', v = null;
   try { v = localStorage.getItem(k); } catch(e){}
@@ -809,6 +887,32 @@ function cloudAdd(pid, text){
   }), 9000, 'add');
 }
 function bootCloud(){
+  if(BRIDGE_URL){
+    if(cloudApi) return Promise.resolve(cloudApi);
+    if(cloudState === 'loading'){
+      return new Promise(function(res){
+        var iv = setInterval(function(){
+          if(cloudState !== 'loading'){ clearInterval(iv); res(cloudApi); }
+        }, 120);
+      });
+    }
+    cloudState = 'loading';
+    return bridgeEnsure().then(function(){
+      cloudApi = { list: bridgeList, add: bridgeAdd };
+      cloudState = 'ready';
+      return cloudApi;
+    }).catch(function(err){
+      cloudState = 'fail';
+      cloudErr = (err && err.message) || 'bridge';
+      return null;
+    });
+  }
+  if(SB_URL && SB_KEY){
+    if(cloudApi) return Promise.resolve(cloudApi);
+    cloudApi = { list: sbList, add: sbAdd };
+    cloudState = 'ready';
+    return Promise.resolve(cloudApi);
+  }
   if(!CLOUD_ENV) return Promise.resolve(null);
   if(cloudApi) return Promise.resolve(cloudApi);
   if(cloudState === 'loading'){
@@ -835,7 +939,7 @@ function setMsgHint(text){
 }
 function syncPlace(pid){
   if(!pid) return;
-  if(!CLOUD_ENV){ setMsgHint('未连数据库 · 留言仅本机可见'); return; }
+  if(!CLOUD_ENV && !BRIDGE_URL){ setMsgHint('未连数据库 · 留言仅本机可见'); return; }
   setMsgHint('正在同步…');
   bootCloud().then(function(api){
     if(!api){ setMsgHint('云端未连接 · ' + (cloudErr || '无响应')); return; }
