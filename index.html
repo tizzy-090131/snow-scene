@@ -1,709 +1,421 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport‑fit=cover">
-<meta name="theme‑color" content="#000000">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
 <title>全球雪景</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23f2f4f6' stroke‑width='1.5' stroke‑linecap='round'%3E%3Cpath d='M12 2.5v19M4 7.2l16 9.6M4 16.8l16‑9.6'/%3E%3C/g%3E%3C/svg%3E">
 <style>
-:root{
-  --white:#F4F6F8;
-  --gray:#8A9099;
-  --gray‑2:#4C525A;
-  --line:rgba(255,255,255,.14);
-  --line‑soft:rgba(255,255,255,.07);
-  --ease:cubic‑bezier(.22,1,.36,1);
-}
-*{box‑sizing:border‑box}
-html,body{
-  margin:0;padding:0;height:100%;background:#000;color:var(--white);
-  font‑family:system‑ui,‑apple‑system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans‑serif;
-  overflow:hidden;overscroll‑behavior:none;
-  -webkit‑font‑smoothing:antialiased;-webkit‑tap‑highlight‑color:transparent;
-}
-button{font‑family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
-:focus‑visible{outline:1.5px solid rgba(255,255,255,.6);outline‑offset:3px}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
 
-#stage{position:fixed;inset:0;overflow:hidden;background:#000;z‑index:1;}
-#bgCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z‑index:1;}
-.vig{position:absolute;inset:0;z‑index:5;pointer‑events:none;
-  background:
-    radial‑gradient(118% 92% at 50% 46%, rgba(0,0,0,0) 38%, rgba(2,6,12,.36) 76%, rgba(2,5,10,.66) 100%),
-    linear‑gradient(180deg, rgba(2,6,12,.30) 0%, rgba(0,0,0,0) 26%);
-}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:1}
+.vig{position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(120% 90% at 50% 45%,transparent 40%,rgba(0,0,0,.5) 100%)}
 
-.glass{
-  background:linear‑gradient(180deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.055) 46%, rgba(255,255,255,.03) 100%);
-  border:1px solid rgba(255,255,255,.16);
-  -webkit‑backdrop‑filter:blur(22px) saturate(180%);
-  backdrop‑filter:blur(22px) saturate(180%);
-  box‑shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
-    inset 0 ‑1px 0 rgba(255,255,255,.05),
-    0 10px 30px rgba(0,0,0,.45);
-}
+.glass{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 8px 24px rgba(0,0,0,.4)}
 
-.pill{
-  position:fixed;top:calc(16px + env(safe‑area‑inset‑top));left:16px;
-  height:42px;padding:0 14px 0 12px;border‑radius:999px;
-  display:inline‑flex;align‑items:center;gap:9px;
-  z‑index:60;
-  transition:transform .3s var(--ease);
-}
-.pill:active{transform:scale(.97)}
-.pill .dot{
-  width:6px;height:6px;border‑radius:50%;background:rgba(255,255,255,.85);
-  box‑shadow:0 0 10px rgba(255,255,255,.75);flex:none;
-}
-.pill .dot.off{background:rgba(255,255,255,.28);box‑shadow:none}
-.pill .dot.warn{background:rgba(255,255,255,.55);box‑shadow:0 0 8px rgba(255,255,255,.4)}
-.pill .txt{
-  font‑size:13px;letter‑spacing:.06em;white‑space:nowrap;color:rgba(255,255,255,.94);
-}
-.pill .chev{width:11px;height:11px;opacity:.6;flex:none;display:block}
-.pill .chev svg{width:11px;height:11px;display:block}
+.pill{position:fixed;top:calc(14px + env(safe-area-inset-top));left:14px;height:42px;padding:0 14px 0 12px;border-radius:999px;display:flex;align-items:center;gap:8px;z-index:60}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 10px #fff;flex:none}
+.pill .dot.off{background:rgba(255,255,255,.3);box-shadow:none}
+.pill .dot.warn{background:rgba(255,255,255,.6);box-shadow:0 0 8px rgba(255,255,255,.4)}
+.pill .txt{font-size:13px;white-space:nowrap}
+.pill svg{width:12px;height:12px;opacity:.7}
 
-.place{
-  position:fixed;left:22px;bottom:calc(28px + env(safe‑area‑inset‑bottom));
-  z‑index:58;pointer‑events:none;
-  transition:opacity .4s var(--ease);
-}
-.place .cn{
-  display:block;font‑weight:300;
-  font‑size:29px;letter‑spacing:.16em;line‑height:1.2;
-  text‑shadow:0 2px 22px rgba(0,0,0,.95);
-  transition:opacity .4s var(--ease);
-}
-.place .meta{
-  display:block;margin‑top:5px;
-  font‑size:10.5px;letter‑spacing:.3em;text‑transform:uppercase;color:rgba(255,255,255,.5);
-  text‑shadow:0 1px 14px rgba(0,0,0,.95);
-  transition:opacity .4s var(--ease);
-}
-.place.quiet .cn,.place.quiet .meta{opacity:.42}
+.place{position:fixed;left:20px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:55;pointer-events:none}
+.place .cn{font-size:28px;font-weight:300;letter-spacing:.15em;text-shadow:0 2px 20px rgba(0,0,0,.9)}
+.place .rg{font-size:11px;letter-spacing:.25em;color:rgba(255,255,255,.5);margin-top:4px;text-shadow:0 1px 10px rgba(0,0,0,.9)}
 
-.wx‑btn{
-  position:fixed;right:16px;bottom:calc(28px + env(safe‑area‑inset‑bottom));
-  width:52px;height:52px;border‑radius:50%;
-  display:grid;place‑items:center;z‑index:60;
-  background:rgba(255,255,255,0.18);
-  border:1px solid rgba(255,255,255,0.32);
-  box‑shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.35);
-  transition:transform .25s var(--ease),background .25s var(--ease);
-  cursor:pointer;
-}
-.wx‑btn:hover{background:rgba(255,255,255,0.28);}
-.wx‑btn:active{transform:scale(.94)}
-.wx‑btn svg{width:22px;height:22px;stroke:rgba(255,255,255,.92);fill:none;stroke‑width:1.6;filter:drop‑shadow(0 0 4px rgba(255,255,255,.35));}
-.wx‑btn.on{background:rgba(74,158,255,.35);border‑color:rgba(140,200,255,.55)}
+.wxbtn{position:fixed;right:16px;bottom:calc(24px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;display:grid;place-items:center;z-index:60;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer}
+.wxbtn svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round}
+.wxbtn.on{background:rgba(74,158,255,.4)}
 
-.wx{
-  position:fixed;right:16px;bottom:calc(88px + env(safe‑area‑inset‑bottom));
-  width:220px;border‑radius:18px;padding:14px 16px 15px;
-  z‑index:59;transform‑origin:100% 100%;
-  transform:translateY(8px) scale(.96);opacity:0;pointer‑events:none;
-  transition:opacity .26s var(--ease),transform .32s var(--ease);
-}
-.wx.open{opacity:1;transform:none;pointer‑events:auto}
-.wx .wtitle{
-  font‑size:10px;letter‑spacing:.22em;color:var(--gray);
-  display:flex;justify‑content:space‑between;align‑items:center;gap:8px;
-}
-.wx .wbig{margin‑top:9px;display:flex;align‑items:baseline;gap:8px}
-.wx .wbig .t{font‑size:30px;line‑height:1;font‑variant‑numeric:tabular‑nums;letter‑spacing:‑.01em}
-.wx .wbig .s{font‑size:11px;letter‑spacing:.1em;color:rgba(255,255,255,.72)}
-.wx .wrows{margin‑top:12px;display:grid;gap:7px}
-.wx .wr{
-  display:flex;justify‑content:space‑between;gap:10px;
-  font‑size:11.5px;color:var(--gray);letter‑spacing:.04em;
-  border‑top:1px solid var(--line‑soft);padding‑top:7px;
-}
-.wx .wr b{font‑weight:400;color:rgba(255,255,255,.86);font‑variant‑numeric:tabular‑nums}
+.wxcard{position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));width:220px;border-radius:18px;padding:14px 16px;z-index:59;opacity:0;pointer-events:none;transform:translateY(8px) scale(.96);transition:.3s}
+.wxcard.open{opacity:1;pointer-events:auto;transform:none}
+.wxcard .t{font-size:30px;font-weight:30px}
+.wxcard .s{font-size:12px;color:rgba(255,255,255,.7);margin-left:6px}
+.wxcard .row{display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.6);margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.1)}
+.wxcard .row b{font-weight:400;color:#fff}
 
-.sheet‑mask{
-  position:fixed;inset:0;z‑index:70;background:rgba(0,0,0,.5);
-  opacity:0;pointer‑events:none;transition:opacity .32s var(--ease);
-}
-.sheet‑mask.open{opacity:1;pointer‑events:auto}
-.sheet{
-  position:fixed;left:0;right:0;bottom:0;z‑index:71;
-  max‑height:74vh;display:flex;flex‑direction:column;
-  border‑radius:22px 22px 0 0;
-  background:linear‑gradient(180deg, rgba(26,28,33,.88) 0%, rgba(11,12,15,.94) 100%);
-  -webkit‑backdrop‑filter:blur(28px) saturate(170%);
-  backdrop‑filter:blur(28px) saturate(170%);
-  border‑top:1px solid rgba(255,255,255,.14);
-  box‑shadow:0 ‑18px 50px rgba(0,0,0,.55);
-  transform:translateY(101%);
-  transition:transform .42s var(--ease);
-  padding‑bottom:env(safe‑area‑inset‑bottom);
-}
+.mask{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.3s}
+.mask.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:71;max-height:75vh;display:flex;flex-direction:column;background:linear-gradient(180deg,rgba(24,26,32,.95),rgba(10,11,14,.97));backdrop-filter:blur(30px);border-top:1px solid rgba(255,255,255,.15);border-radius:22px 22px 0 0;transform:translateY(101%);transition:transform .4s cubic-bezier(.22,1,.36,1);padding-bottom:env(safe-area-inset-bottom)}
 .sheet.open{transform:none}
-.sheet‑head{
-  display:flex;align‑items:center;justify‑content:space‑between;
-  padding:14px 20px 10px;flex:none;
-}
-.sheet‑head .h{font‑size:11px;letter‑spacing:.24em;color:var(--gray)}
-.sheet‑head .n{font‑size:11px;letter‑spacing:.1em;color:rgba(255,255,255,.5);font‑variant‑numeric:tabular‑nums}
-.sheet‑body{overflow‑y:auto;‑webkit‑overflow‑scrolling:touch;padding:0 10px 8px}
-.sheet‑foot{flex:none;padding:0 10px calc(14px + env(safe‑area‑inset‑bottom))}
-.grp{font‑size:10px;letter‑spacing:.22em;color:var(--gray‑2);padding:14px 10px 6px}
-.row{
-  display:flex;align‑items:center;gap:12px;width:100%;
-  min‑height:56px;padding:10px 12px;border‑radius:14px;
-  text‑align:left;transition:background .2s;
-}
-.row:active{background:rgba(255,255,255,.09)}
-.row:hover{background:rgba(255,255,255,.05)}
-.row .nm{font‑size:14.5px;letter‑spacing:.08em;line‑height:1.35}
-.row .rg{display:block;font‑size:10px;letter‑spacing:.16em;color:var(--gray‑2);margin‑top:2px}
-.row .rt{
-  margin‑left:auto;font‑size:12px;color:rgba(255,255,255,.72);
-  font‑variant‑numeric:tabular‑nums;letter‑spacing:.02em;
-  display:flex;align‑items:center;gap:8px;
-}
-.row .sd{width:5px;height:5px;border‑radius:50%;background:rgba(255,255,255,.9);box‑shadow:0 0 8px rgba(255,255,255,.8)}
-.row .sd.soon{background:rgba(255,255,255,.4);box‑shadow:none}
-.row .sd.none{background:rgba(255,255,255,.16);box‑shadow:none}
-.row.dim .nm{color:rgba(255,255,255,.55)}
-.row.cur{background:rgba(255,255,255,.07)}
-.grabber{width:38px;height:4px;border‑radius:2px;background:rgba(255,255,255,.22);margin:8px auto ‑2px;flex:none}
-.demo‑row{
-  display:flex;align‑items:center;justify‑content:space‑between;gap:12px;
-  margin:4px 10px 8px;padding:12px;border‑radius:14px;
-  border:1px solid var(--line‑soft);width:calc(100% ‑ 20px);
-}
-.demo‑row span{font‑size:12px;letter‑spacing:.08em;color:rgba(255,255,255,.7)}
-.toggle{
-  width:42px;height:24px;border‑radius:999px;background:rgba(255,255,255,.14);
-  position:relative;flex:none;transition:background .25s;
-}
-.toggle::after{
-  content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border‑radius:50%;
-  background:rgba(255,255,255,.9);transition:transform .3s var(--ease);
-}
-.toggle[aria‑checked="true"]{background:rgba(255,255,255,.55)}
-.toggle[aria‑checked="true"]::after{transform:translateX(18px)}
-
-@media (min‑width:768px){
-  .pill{top:22px;left:24px;height:44px}
-  .place{left:30px;bottom:34px}
-  .place .cn{font‑size:33px}
-  .wx‑btn{right:24px;bottom:34px}
-  .wx{right:24px;bottom:92px}
-  .sheet{left:auto;right:20px;bottom:20px;width:368px;border‑radius:20px;
-    max‑height:74vh;transform:translateY(14px) scale(.97);opacity:0;
-    transition:opacity .26s var(--ease),transform .3s var(--ease);
-    border:1px solid rgba(255,255,255,.14);}
-  .sheet.open{transform:none;opacity:1}
-  .sheet‑mask{background:rgba(0,0,0,.26)}
-}
-@media (prefers‑reduced‑motion:reduce){
-  *{transition‑duration:.01s!important;animation‑duration:.01s!important}
-}
+.grab{width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);margin:10px auto}
+.shead{display:flex;justify-content:space-between;padding:6px 20px 10px;font-size:11px;letter-spacing:.2em;color:rgba(255,255,255,.5)}
+.sbody{overflow-y:auto;padding:0 10px 10px;flex:1}
+.grp{font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.35);padding:12px 10px 6px}
+.item{display:flex;align-items:center;gap:12px;width:100%;padding:12px;border-radius:14px;text-align:left;cursor:pointer}
+.item:active{background:rgba(255,255,255,.08)}
+.item .nm{font-size:15px}
+.item .rg{display:block;font-size:10px;letter-spacing:.15em;color:rgba(255,255,255,.4);margin-top:2px}
+.item .rt{margin-left:auto;font-size:12px;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:8px}
+.item .sd{width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px #fff}
+.item .sd.soon{background:rgba(255,255,255,.4);box-shadow:none}
+.item .sd.none{background:rgba(255,255,255,.15);box-shadow:none}
+.item.dim .nm{color:rgba(255,255,255,.5)}
+.item.cur{background:rgba(255,255,255,.08)}
+.sfoot{padding:0 10px 10px}
+.demo{display:flex;align-items:center;justify-content:space-between;padding:14px;margin:4px 10px;border:1px solid rgba(255,255,255,.1);border-radius:14px;font-size:13px;cursor:pointer}
+.toggle{width:44px;height:25px;border-radius:99px;background:rgba(255,255,255,.15);position:relative;transition:.25s;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.3s}
+.toggle.on{background:rgba(120,200,255,.6)}
+.toggle.on::after{transform:translateX(19px)}
 </style>
 </head>
 <body>
 
-<div id="stage">
-  <canvas id="bgCanvas"></canvas>
-  <div class="vig"></div>
+<canvas id="bg"></canvas>
+<div class="vig"></div>
 
-  <button class="pill glass" id="pill" aria‑label="选择地点" aria‑expanded="false">
-    <span class="dot warn" id="pillDot"></span>
-    <span class="txt" id="pillTxt">正在获取降雪…</span>
-    <span class="chev" aria‑hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke‑width="1.6"><path d="M6 9l6 6 6‑6" /></svg>
-    </span>
-  </button>
+<button class="pill glass" id="pill">
+  <span class="dot warn" id="pdot"></span>
+  <span class="txt" id="ptxt">正在获取降雪…</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+</button>
 
-  <div class="place" id="place">
-    <span class="cn" id="placeCn">—</span>
-    <span class="meta" id="placeMeta"></span>
-  </div>
-
-  <button class="wx‑btn glass" id="wxBtn" aria‑label="查看天气" aria‑expanded="false">
-    <svg viewBox="0 0 24 24" stroke‑linecap="round">
-      <path d="M12 2v10a4 4 0 1 0 0 8 4 4 0 0 0 0‑8V2" fill="none"></path>
-      <circle cx="12" cy="14" r="4"></circle>
-    </svg>
-  </button>
-
-  <div class="wx glass" id="wxCard" role="dialog" aria‑label="天气详情">
-    <div class="wtitle"><span>此刻</span><span id="wxPlace"></span></div>
-    <div class="wbig"><span class="t" id="wxTemp">—</span><span class="s" id="wxCond"></span></div>
-    <div class="wrows" id="wxRows"></div>
-  </div>
+<div class="place">
+  <div class="cn" id="pcn">—</div>
+  <div class="rg" id="prg"></div>
 </div>
 
-<div class="sheet‑mask" id="mask"></div>
-<div class="sheet" id="sheet" role="dialog" aria‑modal="true" aria‑label="选择地点">
-  <div class="grabber"></div>
-  <div class="sheet‑head">
-    <span class="h">选择地点</span>
-    <span class="n" id="sheetCount"></span>
-  </div>
-  <div class="sheet‑body" id="sheetBody"></div>
-  <div class="sheet‑foot" id="sheetFoot"></div>
+<button class="wxbtn" id="wxbtn" aria-label="天气">
+  <svg viewBox="0 0 24 24">
+    <path d="M10 4a2 2 0 1 1 4 0v9.5a4 4 0 1 1-4 0V4z"/>
+    <circle cx="12" cy="17" r="2.2" fill="#fff" stroke="none"/>
+  </svg>
+</button>
+
+<div class="wxcard glass" id="wxcard">
+  <div><span class="t" id="wtemp">—</span><span class="s" id="wcond"></span></div>
+  <div class="row"><span>风速</span><b id="wwind">—</b></div>
+  <div class="row"><span>未来降雪</span><b id="wsnow">—</b></div>
+  <div class="row"><span>状态</span><b id="wstate">—</b></div>
 </div>
 
-<script id="scenes‑data">
-// 扩充大量地点，全部自然地貌
-const SCENES=[
-// -----国内自然地点-----
-{"id":"altay","name":"阿勒泰","region":"中国·新疆","lat":47.85,"lon":88.12},
-{"id":"changbai","name":"长白山","region":"中国·吉林","lat":42.00,"lon":128.06},
-{"id":"shangri‑la","name":"香格里拉","region":"中国·云南","lat":27.83,"lon":99.70},
-{"id":"lhasa","name":"念青唐古拉山","region":"中国·西藏","lat":29.66,"lon":91.12},
-{"id":"hulunbuir","name":"呼伦贝尔雪原","region":"中国·内蒙古","lat":49.22,"lon":119.75},
-{"id":"tianshan","name":"天山","region":"中国·新疆","lat":43.79,"lon":87.62},
-{"id":"qilian","name":"祁连山","region":"中国·青海","lat":39.58,"lon":98.42},
-{"id":"gongga","name":"贡嘎雪山","region":"中国·四川","lat":29.59,"lon":101.88},
-{"id":"k2","name":"乔戈里峰","region":"中国·新疆","lat":35.88,"lon":76.51},
-{"id":"meili","name":"梅里雪山","region":"中国·云南","lat":28.45,"lon":98.88},
-{"id":"daocheng","name":"稻城亚丁","region":"中国·四川","lat":28.50,"lon":100.30},
-{"id":"helan","name":"贺兰山","region":"中国·宁夏","lat":38.85,"lon":105.92},
-// -----国外自然地点-----
-{"id":"fuji","name":"富士山","region":"日本·静冈县","lat":35.36,"lon":138.73},
-{"id":"sapporo","name":"札幌雪原","region":"日本·北海道","lat":43.06,"lon":141.35},
-{"id":"matterhorn","name":"马特洪峰","region":"瑞士·采尔马特","lat":45.98,"lon":7.66},
-{"id":"jungfrau","name":"少女峰","region":"瑞士·伯尔尼","lat":46.55,"lon":7.98},
-{"id":"rovaniemi","name":"罗瓦涅米","region":"芬兰·拉普兰","lat":66.50,"lon":25.73},
-{"id":"longyearbyen","name":"朗伊尔城","region":"挪威·斯瓦尔巴","lat":78.22,"lon":15.62},
-{"id":"tromso","name":"特罗姆瑟","region":"挪威","lat":69.65,"lon":18.96},
-{"id":"banff","name":"班夫落基山","region":"加拿大","lat":51.18,"lon":‑115.57},
-{"id":"whistler","name":"惠斯勒雪山","region":"加拿大","lat":50.11,"lon":‑122.95},
-{"id":"denali","name":"迪纳利山","region":"美国·阿拉斯加","lat":63.07,"lon":‑151.01},
-{"id":"mtrainier","name":"雷尼尔山","region":"美国","lat":46.85,"lon":‑121.76},
-{"id":"patagonia","name":"巴塔哥尼亚","region":"阿根廷","lat":‑49.22,"lon":‑73.03},
-{"id":"kilimanjaro","name":"乞力马扎罗","region":"坦桑尼亚","lat":‑3.07,"lon":37.35},
-{"id":"aoraki","name":"奥拉基库克山","region":"新西兰","lat":‑43.53,"lon":170.14},
-{"id":"montblanc","name":"勃朗峰","region":"法国阿尔卑斯","lat":45.83,"lon":6.86},
-{"id":"grossglockner","name":"大格洛克纳山","region":"奥地利","lat":47.07,"lon":12.75}
+<div class="mask" id="mask"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <div class="shead"><span>选择地点</span><span id="scount"></span></div>
+  <div class="sbody" id="sbody"></div>
+  <div class="sfoot" id="sfoot"></div>
+</div>
+
+<script>
+// ========== 地点数据 ==========
+var SCENES = [
+  {id:"altay", name:"阿勒泰", rg:"中国 · 新疆", lat:47.85, lon:88.12},
+  {id:"changbai", name:"长白山", rg:"中国 · 吉林", lat:42.00, lon:128.06},
+  {id:"shangrila", name:"香格里拉", rg:"中国 · 云南", lat:27.83, lon:99.70},
+  {id:"tanggula", name:"念青唐古拉", rg:"中国 · 西藏", lat:29.66, lon:91.12},
+  {id:"hulunbuir", name:"呼伦贝尔雪原", rg:"中国 · 内蒙古", lat:49.22, lon:119.75},
+  {id:"tianshan", name:"天山", rg:"中国 · 新疆", lat:43.79, lon:87.62},
+  {id:"qilian", name:"祁连山", rg:"中国 · 青海", lat:39.58, lon:98.42},
+  {id:"gongga", name:"贡嘎雪山", rg:"中国 · 四川", lat:29.59, lon:101.88},
+  {id:"meili", name:"梅里雪山", rg:"中国 · 云南", lat:28.45, lon:98.88},
+  {id:"daocheng", name:"稻城亚丁", rg:"中国 · 四川", lat:28.50, lon:100.30},
+  {id:"fuji", name:"富士山", rg:"日本 · 静冈", lat:35.36, lon:138.73},
+  {id:"sapporo", name:"札幌雪原", rg:"日本 · 北海道", lat:43.06, lon:141.35},
+  {id:"matterhorn", name:"马特洪峰", rg:"瑞士 · 采尔马特", lat:45.98, lon:7.66},
+  {id:"jungfrau", name:"少女峰", rg:"瑞士 · 伯尔尼", lat:46.55, lon:7.98},
+  {id:"montblanc", name:"勃朗峰", rg:"法国 · 阿尔卑斯", lat:45.83, lon:6.86},
+  {id:"rovaniemi", name:"罗瓦涅米", rg:"芬兰 · 拉普兰", lat:66.50, lon:25.73},
+  {id:"longyearbyen", name:"朗伊尔城", rg:"挪威 · 斯瓦尔巴", lat:78.22, lon:15.62},
+  {id:"tromso", name:"特罗姆瑟", rg:"挪威", lat:69.65, lon:18.96},
+  {id:"banff", name:"班夫落基山", rg:"加拿大", lat:51.18, lon:-115.57},
+  {id:"whistler", name:"惠斯勒", rg:"加拿大", lat:50.11, lon:-122.95},
+  {id:"denali", name:"迪纳利山", rg:"美国 · 阿拉斯加", lat:63.07, lon:-151.01},
+  {id:"rainier", name:"雷尼尔山", rg:"美国 · 华盛顿", lat:46.85, lon:-121.76},
+  {id:"patagonia", name:"巴塔哥尼亚", rg:"阿根廷", lat:-49.22, lon:-73.03},
+  {id:"kilimanjaro", name:"乞力马扎罗", rg:"坦桑尼亚", lat:-3.07, lon:37.35},
+  {id:"aoraki", name:"库克山", rg:"新西兰", lat:-43.53, lon:170.14}
 ];
-// 兜底示例数据，保证演示开关可以工作
-const FALLBACK = SCENES.map(s=>{
-  return {
-    id:s.id,
-    temp:‑4 + Math.random()*8,
-    snowing: s.id==="longyearbyen",
-    sleet:false,
-    next:null,
-    mm:s.id==="longyearbyen"?3.2:0
-  };
-});
-</script>
 
-<script id="app‑engine">
-(function(){
-'use strict';
 var SNOW_CODES = [71,73,75,77,85,86];
 var SLEET_CODES = [66,67,68,79];
-var CACHE_KEY = 'snowday.v2.cache';
-var CACHE_MIN = 20;
-var reduced = window.matchMedia('(prefers‑reduced‑motion: reduce)').matches;
-var mv = { order:[], cur:‑1, demo:false, source:'' };
 
-function pad(n){ return n<10 ? '0'+n : ''+n; }
-function hhmm(iso){
-  if(!iso) return '';
-  var d = new Date(iso);
-  if(isNaN(d)) return '';
-  return pad(d.getHours())+':'+pad(d.getMinutes());
-}
-function within(iso, h){
-  if(!iso) return false;
-  var t = new Date(iso).getTime();
-  if(isNaN(t)) return false;
-  var now = Date.now();
-  return t‑now <= h*3600e3 && t‑now > ‑3600e3;
-}
-function getJSON(url, ms){
-  var ctl = new AbortController();
-  var timer = setTimeout(function(){ ctl.abort(); }, ms||9000);
-  return fetch(url, {signal:ctl.signal})
-    .then(function(r){ clearTimeout(timer); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .catch(function(e){ clearTimeout(timer); throw e; });
-}
-function byId(id){ return document.getElementById(id); }
+// ========== 状态 ==========
+var order = [];
+var curIdx = 0;
+var demo = false;
+var weatherOpen = false;
 
-function classify(p){
-  if(mv.demo) return 'snow';
-  if(p.snowing) return 'snow';
-  if(p.sleet) return 'sleet';
-  if(within(p.next, 24)) return 'soon';
-  return 'none';
-}
-function stLabel(st){
-  if(st==='snow') return mv.demo ? '演示降雪' : '正在下雪';
-  if(st==='sleet') return '雨夹雪';
-  if(st==='soon') return '即将下雪';
-  return '无降雪';
-}
+// ========== Canvas ==========
+var cv = document.getElementById("bg");
+var cx = cv.getContext("2d");
+var W, H;
+var stars = [];
+var flakes = [];
+var showSnow = false;
 
-function fromOpenMeteo(){
-  var lat = SCENES.map(function(s){ return s.lat; }).join(',');
-  var lon = SCENES.map(function(s){ return s.lon; }).join(',');
-  var url = 'https://api.open‑meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
-            '&current=weather_code,temperature_2m,snowfall,wind_speed_10m'+
-            '&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC';
-  return getJSON(url, 10000).then(function(j){
-    var arr = Array.isArray(j) ? j : [j];
-    if(!arr.length) throw new Error('empty');
-    return { source:'Open‑Meteo', places: arr.map(function(r, i){
-      var c = r.current || {};
-      var hr = r.hourly || {};
-      var times = hr.time || [], sf = hr.snowfall || [], hc = hr.weather_code || [];
-      var next = null, sum = 0, t0 = Date.now();
-      for(var k=0;k<times.length;k++){
-        var tt = new Date(times[k] + (times[k].length>16?'':'Z')).getTime();
-        if(tt‑t0 < ‑3600e3) continue;
-        if(tt‑t0 > 24*3600e3) break;
-        if(SNOW_CODES.indexOf(hc[k])>‑1 || SLEET_CODES.indexOf(hc[k])>‑1){
-          sum += (sf[k]||0);
-          if(!next) next = new Date(tt).toISOString();
-        }
-      }
-      return {
-        id: SCENES[i].id,
-        temp: (c.temperature_2m!=null ? Math.round(c.temperature_2m*10)/10 : null),
-        wind: (c.wind_speed_10m!=null ? Math.round(c.wind_speed_10m*10)/10 : null),
-        code: String(c.weather_code==null?'':c.weather_code),
-        snowing: SNOW_CODES.indexOf(c.weather_code)>‑1,
-        sleet: SLEET_CODES.indexOf(c.weather_code)>‑1,
-        next: next, mm: Math.round(sum*10)/10
-      };
-    })};
-  });
+function resize(){
+  W = cv.width = window.innerWidth;
+  H = cv.height = window.innerHeight;
+  buildStars();
 }
+window.addEventListener("resize", resize);
 
-function apply(places, source){
-  mv.source = source;
-  mv.order = SCENES.map(function(s){
-    var p = null;
-    for(var k=0;k<places.length;k++){ if(places[k].id===s.id){ p = places[k]; break; } }
-    if(!p) p = {id:s.id, temp:null, next:null, mm:0};
-    return { scene:s, place:p, st: classify(p) };
-  });
-  buildSheet();
-  var best = pickDefault();
-  if(window.DEEP){
-    for(var d=0;d<mv.order.length;d++){
-      if(mv.order[d].scene.id === window.DEEP){ best = d; break; }
-    }
+function buildStars(){
+  stars = [];
+  var n = Math.floor(W * H / 1200);
+  for(var i=0;i<n;i++){
+    stars.push({
+      x: Math.random()*W,
+      y: Math.random()*H*0.7,
+      r: Math.random()*1.1+0.3,
+      a: Math.random()*0.5+0.2,
+      spd: Math.random()*0.0018+0.0005,
+      ph: Math.random()*Math.PI*2
+    });
   }
-  setPlace(best < 0 ? 0 : best, true);
+}
+
+function buildFlakes(on){
+  showSnow = on;
+  flakes = [];
+  if(!on) return;
+  for(var i=0;i<400;i++){
+    flakes.push({
+      x: Math.random()*W,
+      y: Math.random()*-H,
+      r: Math.random()*2.2+0.6,
+      vy: Math.random()*1.2+0.6,
+      vx: Math.random()*0.4-0.2,
+      ph: Math.random()*Math.PI*2
+    });
+  }
+}
+
+function drawScene(){
+  var g = cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#060c1e");
+  g.addColorStop(0.5,"#102242");
+  g.addColorStop(1,"#1e3860");
+  cx.fillStyle = g;
+  cx.fillRect(0,0,W,H);
+}
+
+function drawMountains(){
+  cx.fillStyle = "#152036";
+  cx.beginPath();
+  cx.moveTo(0,H);
+  for(var x=0;x<=W;x+=100){
+    var h = H*0.35 + Math.sin(x*0.008)*H*0.15;
+    cx.lineTo(x,h);
+  }
+  cx.lineTo(W,H);
+  cx.fill();
+
+  cx.fillStyle = "#101a2c";
+  cx.beginPath();
+  cx.moveTo(0,H);
+  for(var x2=0;x2<=W;x2+=70){
+    var h2 = H*0.55 + Math.sin(x2*0.012+1)*H*0.1;
+    cx.lineTo(x2,h2);
+  }
+  cx.lineTo(W,H);
+  cx.fill();
+
+  var gg = cx.createLinearGradient(0,H*0.72,0,H);
+  gg.addColorStop(0,"#9fb3d3");
+  gg.addColorStop(1,"#2e3d5a");
+  cx.fillStyle = gg;
+  cx.fillRect(0,H*0.72,W,H*0.28);
+}
+
+function drawStars(t){
+  for(var i=0;i<stars.length;i++){
+    var s = stars[i];
+    var tw = Math.sin(t*s.spd + s.ph);
+    var alpha = s.a * (0.4 + 0.6*tw);
+    cx.beginPath();
+    cx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    cx.fillStyle = "rgba(255,255,255,"+alpha+")";
+    cx.fill();
+  }
+}
+
+function drawSnow(t){
+  if(!showSnow) return;
+  for(var i=0;i<flakes.length;i++){
+    var f = flakes[i];
+    f.y += f.vy;
+    f.x += f.vx + Math.sin(t*0.0015+f.ph)*0.2;
+    if(f.y > H+10){ f.y = -10; f.x = Math.random()*W; }
+    if(f.x > W+10) f.x = -10;
+    if(f.x < -10) f.x = W+10;
+    var g = cx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
+    g.addColorStop(0,"rgba(255,255,255,0.9)");
+    g.addColorStop(0.6,"rgba(255,255,255,0.4)");
+    g.addColorStop(1,"rgba(255,255,255,0)");
+    cx.beginPath();
+    cx.arc(f.x,f.y,f.r,0,Math.PI*2);
+    cx.fillStyle = g;
+    cx.fill();
+  }
+}
+
+function loop(t){
+  drawScene();
+  drawMountains();
+  drawStars(t);
+  drawSnow(t);
+  requestAnimationFrame(loop);
+}
+
+// ========== 天气逻辑 ==========
+function classify(p){
+  if(demo) return "snow";
+  if(p.snowing) return "snow";
+  if(p.sleet) return "sleet";
+  return "none";
+}
+
+function loadWeather(){
+  var lats = SCENES.map(function(s){return s.lat}).join(",");
+  var lons = SCENES.map(function(s){return s.lon}).join(",");
+  var url = "https://api.open-meteo.com/v1/forecast?latitude="+lats+"&longitude="+lons+
+    "&current=weather_code,temperature_2m,wind_speed_10m&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC";
+
+  fetch(url).then(function(r){return r.json()}).then(function(data){
+    var arr = Array.isArray(data) ? data : [data];
+    order = SCENES.map(function(s,i){
+      var r = arr[i] || {};
+      var c = r.current || {};
+      var code = c.weather_code;
+      var snowing = SNOW_CODES.indexOf(code) > -1;
+      var sleet = SLEET_CODES.indexOf(code) > -1;
+      return {
+        scene: s,
+        temp: c.temperature_2m != null ? Math.round(c.temperature_2m*10)/10 : null,
+        wind: c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) : null,
+        snowing: snowing,
+        sleet: sleet,
+        mm: 0,
+        st: null
+      };
+    });
+    order.forEach(function(o){ o.st = classify(o); });
+    buildSheet();
+    pickDefault();
+  }).catch(function(e){
+    order = SCENES.map(function(s,i){
+      return {
+        scene: s,
+        temp: -5 + Math.random()*10,
+        wind: 5 + Math.random()*10,
+        snowing: s.id === "longyearbyen",
+        sleet: false,
+        mm: s.id === "longyearbyen" ? 3.2 : 0,
+        st: null
+      };
+    });
+    order.forEach(function(o){ o.st = classify(o); });
+    buildSheet();
+    pickDefault();
+  });
 }
 
 function pickDefault(){
-  var iBest = ‑1, vBest = ‑1;
-  var seed = new Date().toISOString().slice(0,10);
-  mv.order.forEach(function(m, i){
-    var v = 0;
-    if(m.st==='snow') v = 1000 + (m.place.mm||0);
-    else if(m.st==='sleet') v = 900 + (m.place.mm||0);
-    else if(m.st==='soon') v = 500 ‑ Math.min(400, Math.max(0, (new Date(m.place.next||0)‑Date.now())/60e3));
-    v += (Math.abs(hash(seed + m.scene.id)) % 1000) / 1000;
-    if(v > vBest){ vBest = v; iBest = i; }
-  });
-  return iBest;
-}
-function hash(str){
-  var h = 0;
-  for(var i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
-  return h;
+  var best = 0;
+  for(var i=0;i<order.length;i++){
+    if(order[i].st === "snow"){ best = i; break; }
+  }
+  selectCity(best);
 }
 
-function setPlace(i, instant){
-  if(i<0 || i>=mv.order.length) return;
-  var m = mv.order[i];
-  mv.cur = i;
-  var st = m.st;
-  window.VS_PENDING = [m.scene.id, st];
-  if(window.drawScene) window.drawScene(m.scene.id, st);
-  byId('placeCn').textContent = m.scene.name;
-  byId('placeMeta').textContent = m.scene.region;
-  byId('place').classList.toggle('quiet', !(st==='snow' || st==='sleet'));
-  setPill((st==='snow' || st==='sleet') ? 'on' : 'off', m.scene.name);
-  fillWeather(m);
-  if(!mv.weather) byId('wxCard').classList.remove('open');
-}
-function setPill(kind, txt){
-  var d = byId('pillDot');
-  d.className = 'dot' + (kind==='on' ? '' : (kind==='warn' ? ' warn' : ' off'));
-  byId('pillTxt').textContent = txt;
-}
+function selectCity(i){
+  curIdx = i;
+  var m = order[i];
+  if(!m) return;
+  buildFlakes(m.st === "snow" || m.st === "sleet");
 
-var COND = {
-  snow:'雪', sleet:'雨夹雪', none:'无降雪'
-};
-function fillWeather(m){
-  var p = m.place, st = m.st;
-  byId('wxPlace').textContent = m.scene.name;
-  byId('wxTemp').textContent = (p.temp!=null ? p.temp+'°' : '—');
-  byId('wxCond').textContent = st==='snow' ? (mv.demo?'演示':'正在下雪')
-    : st==='sleet' ? '雨夹雪'
-    : st==='soon' ? '即将下雪'
-    : '无降雪';
-  var rows = [
-    ['风速', p.wind!=null ? p.wind+' m/s' : '—'],
-    ['未来24小时降雪', p.mm ? p.mm+' cm' : '—'],
-    ['开始降雪', within(p.next,24) ? hhmm(p.next) : '—'],
-    ['状态', stLabel(st)]
-  ];
-  byId('wxRows').innerHTML = rows.map(function(r){
-    return '<div class="wr"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';
-  }).join('');
+  document.getElementById("pcn").textContent = m.scene.name;
+  document.getElementById("prg").textContent = m.scene.rg;
+
+  var dot = document.getElementById("pdot");
+  if(m.st === "snow" || m.st === "sleet"){
+    dot.className = "dot";
+    document.getElementById("ptxt").textContent = m.scene.name + " · 下雪";
+  } else {
+    dot.className = "dot off";
+    document.getElementById("ptxt").textContent = m.scene.name;
+  }
+
+  document.getElementById("wtemp").textContent = m.temp != null ? m.temp + "°" : "—";
+  document.getElementById("wcond").textContent = m.st === "snow" ? "下雪" : (m.st === "sleet" ? "雨夹雪" : "无降雪");
+  document.getElementById("wwind").textContent = m.wind != null ? m.wind + " m/s" : "—";
+  document.getElementById("wsnow").textContent = m.mm > 0 ? m.mm + " cm" : "—";
+  document.getElementById("wstate").textContent = m.st === "snow" ? "正在下雪" : (m.st === "sleet" ? "雨夹雪" : "无降雪");
 }
 
 function buildSheet(){
-  var snow = [], soon = [], none = [];
-  mv.order.forEach(function(m, i){
-    if(m.st==='snow' || m.st==='sleet') snow.push([m,i]);
-    else if(m.st==='soon') soon.push([m,i]);
+  var snow = [], none = [];
+  order.forEach(function(m,i){
+    if(m.st === "snow" || m.st === "sleet") snow.push([m,i]);
     else none.push([m,i]);
   });
-  soon.sort(function(a,b){ return new Date(a[0].place.next||0) ‑ new Date(b[0].place.next||0); });
-  function rows(list, dotCls){
+
+  function rows(list, cls){
     return list.map(function(x){
       var m = x[0], i = x[1];
-      var t = (m.place.temp!=null ? m.place.temp+'°' : '');
-      var extra = m.st==='soon' && within(m.place.next,24) ? hhmm(m.place.next) : (m.place.mm ? m.place.mm+'cm' : '');
-      return '<button class="row'+(i===mv.cur?' cur':'')+(m.st==='none'?' dim':'')+'" data‑i="'+i+'">'+
-        '<span><span class="nm">'+m.scene.name+'</span><span class="rg">'+m.scene.region+'</span></span>'+
-        '<span class="rt">'+(extra?'<span>'+extra+'</span>':'')+'<span>'+t+'</span><span class="sd '+dotCls+'"></span></span>'+
+      var t = m.temp != null ? m.temp + "°" : "";
+      return '<button class="item'+(i===curIdx?" cur":"")+(m.st==="none"?" dim":"")+'" data-i="'+i+'">'+
+        '<span><span class="nm">'+m.scene.name+'</span><span class="rg">'+m.scene.rg+'</span></span>'+
+        '<span class="rt"><span>'+t+'</span><span class="sd '+cls+'"></span></span>'+
       '</button>';
-    }).join('');
+    }).join("");
   }
-  var html = '';
-  if(snow.length) html += '<div class="grp">正在下雪 · '+snow.length+'</div>'+rows(snow,'');
-  if(soon.length) html += '<div class="grp">即将下雪 · '+soon.length+'</div>'+rows(soon,'soon');
-  if(none.length) html += '<div class="grp">暂无降雪 · '+none.length+'</div>'+rows(none,'none');
-  byId('sheetCount').textContent = '';
-  byId('sheetBody').innerHTML = html;
-  byId('sheetFoot').innerHTML =
-    '<button class="demo‑row" id="demoRow"><span>演示：全部地点开启下雪</span>'+
-    '<span class="toggle" role="switch" aria‑checked="'+(mv.demo?'true':'false')+'" id="demoTog"></span></button>';
-  Array.prototype.forEach.call(byId('sheetBody').querySelectorAll('.row'), function(el){
-    el.addEventListener('click', function(){
-      setPlace(parseInt(el.getAttribute('data‑i'),10), false);
+
+  var html = "";
+  if(snow.length) html += '<div class="grp">正在下雪 · '+snow.length+'</div>' + rows(snow,"");
+  if(none.length) html += '<div class="grp">暂无降雪 · '+none.length+'</div>' + rows(none,"none");
+  document.getElementById("sbody").innerHTML = html;
+
+  document.getElementById("sfoot").innerHTML =
+    '<button class="demo" id="demoBtn"><span>演示：全部地点下雪</span><span class="toggle'+(demo?" on":"")+'" id="tog"></span></button>';
+
+  var items = document.querySelectorAll(".item");
+  for(var j=0;j<items.length;j++){
+    items[j].addEventListener("click", function(){
+      selectCity(parseInt(this.getAttribute("data-i")));
       closeSheet();
     });
-  });
-  byId('demoRow').addEventListener('click', function(){
-    mv.demo = !mv.demo;
-    byId('demoTog').setAttribute('aria‑checked', mv.demo ? 'true':'false');
-    mv.order = mv.order.map(function(m){ return { scene:m.scene, place:m.place, st: classify(m.place) }; });
+  }
+  document.getElementById("demoBtn").addEventListener("click", function(){
+    demo = !demo;
+    order.forEach(function(o){ o.st = classify(o); });
     buildSheet();
-    setPlace(mv.cur, false);
+    selectCity(curIdx);
   });
 }
 
-function openSheet(){
-  buildSheet();
-  byId('sheet').classList.add('open');
-  byId('mask').classList.add('open');
-  byId('pill').setAttribute('aria‑expanded','true');
-}
+// ========== UI 交互 ==========
+var sheet = document.getElementById("sheet");
+var mask = document.getElementById("mask");
+document.getElementById("pill").addEventListener("click", function(){
+  sheet.classList.toggle("open");
+  mask.classList.toggle("open");
+});
+mask.addEventListener("click", closeSheet);
 function closeSheet(){
-  byId('sheet').classList.remove('open');
-  byId('mask').classList.remove('open');
-  byId('pill').setAttribute('aria‑expanded','false');
+  sheet.classList.remove("open");
+  mask.classList.remove("open");
 }
 
-byId('pill').addEventListener('click', function(){
-  var open = byId('sheet').classList.contains('open');
-  if(open) closeSheet(); else openSheet();
-});
-byId('mask').addEventListener('click', closeSheet);
-byId('wxBtn').addEventListener('click', function(){
-  mv.weather = !mv.weather;
-  byId('wxCard').classList.toggle('open', mv.weather);
-  byId('wxBtn').classList.toggle('on', mv.weather);
-  byId('wxBtn').setAttribute('aria‑expanded', mv.weather ? 'true':'false');
-});
-document.addEventListener('keydown', function(e){
-  if(e.key==='Escape'){
-    if(byId('sheet').classList.contains('open')) closeSheet();
-    else if(mv.weather){
-      mv.weather = false;
-      byId('wxCard').classList.remove('open');
-      byId('wxBtn').classList.remove('on');
-    }
-    return;
-  }
-  if(byId('sheet').classList.contains('open')) return;
-  if(e.key==='ArrowRight') setPlace((mv.cur+1)%mv.order.length, false);
-  if(e.key==='ArrowLeft') setPlace((mv.cur‑1+mv.order.length)%mv.order.length, false);
+var wxcard = document.getElementById("wxcard");
+document.getElementById("wxbtn").addEventListener("click", function(){
+  weatherOpen = !weatherOpen;
+  wxcard.classList.toggle("open", weatherOpen);
+  this.classList.toggle("on", weatherOpen);
 });
 
-var HS = location.hash.replace('#','').split('&');
-if(HS.indexOf('demo')>‑1) mv.demo = true;
-window.DEEP = '';
-HS.forEach(function(kv){ if(kv.indexOf('p=')===0) window.DEEP = kv.slice(2); });
-
-function loadData(force){
-  var cached = null;
-  try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){}
-  if(!force && cached && Date.now()‑cached.ts < CACHE_MIN*60e3 && cached.places && cached.places.length===SCENES.length){
-    apply(cached.places, cached.source); return;
-  }
-  setPill('warn', '正在获取降雪…');
-  fromOpenMeteo()
-    .catch(function(){
-      apply(FALLBACK, '示例数据');
-    })
-    .then(function(res){
-      if(!res) return;
-      try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), places:res.places, source:res.source})); }catch(e){}
-      apply(res.places, res.source);
-    });
-}
-
-setPlace(0, true);
-loadData(false);
-setInterval(function(){ loadData(true); }, CACHE_MIN*60e3);
-})();
-</script>
-
-<script>
-// 纯2D Canvas渲染，无three.js
-const canvas = document.getElementById('bgCanvas');
-const ctx = canvas.getContext('2d');
-let W,H;
-let stars = [];
-let snowList = [];
-let showSnow = false;
-
-function resize(){
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  canvas.style.width = W+'px';
-  canvas.style.height = H+'px';
-  createStars();
-}
-window.addEventListener('resize',resize);
-
-//星星，闪烁调慢
-function createStars(){
-  stars = [];
-  const count = Math.floor((W*H)/1300);
-  for(let i=0;i<count;i++){
-    stars.push({
-      x:Math.random()*W,
-      y:Math.random()*H*0.75,
-      r:Math.random()*1.1+0.25,
-      baseA:Math.random()*0.5+0.2,
-      spd:Math.random()*0.0022+0.0006,
-      phase:Math.random()*Math.PI*2
-    })
-  }
-}
-
-//雪花参数
-function resetSnow(enable){
-  showSnow = enable;
-  snowList = [];
-  if(!enable) return;
-  const cnt = 450;
-  for(let i=0;i<cnt;i++){
-    snowList.push({
-      x:Math.random()*W,
-      y:Math.random()*‑H,
-      r:Math.random()*2.2+0.6,
-      ys:Math.random()*1.2+0.7,
-      xDrift:Math.random()*0.4‑0.2,
-      phase:Math.random()*Math.PI*2
-    })
-  }
-}
-
-//绘制背景：渐变夜空 + 多层雪山森林剪影
-function drawBackground(){
-  //夜空渐变
-  const gradSky = ctx.createLinearGradient(0,0,0,H);
-  gradSky.addColorStop(0,'#070e20');
-  gradSky.addColorStop(0.45,'#122444');
-  gradSky.addColorStop(1,'#203860');
-  ctx.fillStyle = gradSky;
-  ctx.fillRect(0,0,W,H);
-
-  //远景大雪山剪影
-  ctx.fillStyle='#141f33';
-  ctx.beginPath();
-  ctx.moveTo(0,H);
-  for(let x=0;x<=W;x+=120){
-    let h = H*0.38 + Math.sin(x*0.007)*H*0.16 + Math.cos(x*0.013)*H*0.08;
-    ctx.lineTo(x,h);
-  }
-  ctx.lineTo(W,H);
-  ctx.fill();
-
-  //中景山林
-  ctx.fillStyle='#0f1726';
-  ctx.beginPath();
-  ctx.moveTo(0,H);
-  for(let x=0;x<=W;x+=80){
-    let h = H*0.55 + Math.sin(x*0.011)*H*0.11;
-    ctx.lineTo(x,h);
-  }
-  ctx.lineTo(W,H);
-  ctx.fill();
-
-  //近地雪地
-  const gradGround = ctx.createLinearGradient(0,H*0.72,0,H);
-  gradGround.addColorStop(0,'#a0b4d4');
-  gradGround.addColorStop(1,'#354460');
-  ctx.fillStyle = gradGround;
-  ctx.fillRect(0,H*0.72,W,H*0.28);
-}
-
-function render(time){
-  ctx.clearRect(0,0,W,H);
-  drawBackground();
-
-  //绘制星星
-  for(const s of stars){
-    const tw = Math.sin(time*s.spd + s.phase);
-    const alpha = s.baseA * (0.4 + 0.6*tw);
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,'+alpha+')';
-    ctx.fill();
-  }
-
-  //绘制雪花
-  if(showSnow){
-    for(const f of snowList){
-      f.y += f.ys;
-      f.x += f.xDrift + Math.sin(time*0.0015+f.phase)*0.22;
-      if(f.y>H+10){
-        f.y = ‑10;
-        f.x = Math.random()*W;
-      }
-      if(f.x>W+10) f.x=‑10;
-      if(f.x<‑10) f.x=W+10;
-      const g = ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,f.r);
-      g.addColorStop(0,'rgba(255,255,255,0.92)');
-      g.addColorStop(0.6,'rgba(255,255,255,0.45)');
-      g.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.beginPath();
-      ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
-      ctx.fillStyle = g;
-      ctx.fill();
-    }
-  }
-
-  requestAnimationFrame(render);
-}
-
-window.drawScene = function(id,status){
-  resetSnow(status==='snow' || status==='sleet');
-};
-
+// ========== 启动 ==========
 resize();
-requestAnimationFrame(render);
+requestAnimationFrame(loop);
+loadWeather();
+setInterval(loadWeather, 20*60*1000);
 </script>
 
-</body
+</body>
+</html>
