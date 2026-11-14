@@ -1128,7 +1128,7 @@ const heldFlake = new THREE.Sprite(new THREE.SpriteMaterial({
   map: heldTex, color: 0xf2f8ff, transparent: true, depthWrite: false,
   blending: THREE.AdditiveBlending, opacity: .92
 }));
-heldFlake.scale.set(2.0, 2.0, 1);
+heldFlake.scale.set(1.2, 1.2, 1);
 heldFlake.visible = false;
 scene.add(heldFlake);
 const held = { l: null, i: -1, pos: new THREE.Vector3() };
@@ -2080,7 +2080,7 @@ function tick(now) {
   }
 
   if (heldFlake.visible) {
-    const breathe = 2.0 + Math.sin(t * 1.05) * .1;
+    const breathe = 1.2 + Math.sin(t * 1.05) * .06;
     heldFlake.scale.set(breathe, breathe, 1);
     heldFlake.material.rotation = t * .09;
   }
