@@ -58,6 +58,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 }
 .pill .dot.off{background:rgba(255,255,255,.28);box-shadow:none}
 .pill .dot.warn{background:rgba(255,255,255,.55);box-shadow:0 0 8px rgba(255,255,255,.4)}
+.pill .dot.err{background:#ff6b6b;box-shadow:0 0 8px rgba(255,107,107,.5)}
 .pill .txt{
   font-size:13px;letter-spacing:.06em;white-space:nowrap;color:rgba(255,255,255,.94);
 }
@@ -250,7 +251,9 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 </div>
 
 <script>
-// 地点列表
+// 【关键修复：用美国节点，国内能直接访问】
+const API_BASE = "https://api-us.open-meteo.com";
+
 const SCENES = [
   {id:"altay",name:"阿勒泰",region:"中国·新疆",lat:47.85,lon:88.12},
   {id:"changbai",name:"长白山",region:"中国·吉林",lat:42.00,lon:128.06},
@@ -282,23 +285,16 @@ const SCENES = [
   {id:"grossglockner",name:"大格洛克纳山",region:"奥地利",lat:47.07,lon:12.75}
 ];
 
-// Open-Meteo 降雪相关天气码
 const SNOW_CODES = [71,73,75,77,85,86];
 const SLEET_CODES = [66,67,68,79];
-
-const CACHE_KEY = "snowday.v3.cache";
+const CACHE_KEY = "snowday.v5.cache";
 const CACHE_MIN = 20;
-let mv = {
-  list: [],
-  cur: 0,
-  demo: false
-};
-
+const MAX_RETRY = 2;
+let mv = { list: [], cur: 0, demo: false };
 function byId(id){ return document.getElementById(id); }
 
-// 单个地点请求
-async function fetchOne(scene){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${scene.lat}&longitude=${scene.lon}&current=temperature_2m,weather_code,snowfall,wind_speed_10m&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC`;
+async function fetchOneWithRetry(scene, retry=0){
+  const url = `${API_BASE}/v1/forecast?latitude=${scene.lat}&longitude=${scene.lon}&current=temperature_2m,weather_code,snowfall,wind_speed_10m&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC`;
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if(!res.ok) throw new Error("http " + res.status);
@@ -321,17 +317,16 @@ async function fetchOne(scene){
       }
     }
     return {
-      id: scene.id,
-      ok: true,
-      temp: cur.temperature_2m,
-      wind: cur.wind_speed_10m,
-      code: cur.weather_code,
-      snowNow: SNOW_CODES.includes(cur.weather_code),
-      sleetNow: SLEET_CODES.includes(cur.weather_code),
-      snow24h: sumSnow,
-      nextSnow
+      id: scene.id, ok: true,
+      temp: cur.temperature_2m, wind: cur.wind_speed_10m, code: cur.weather_code,
+      snowNow: SNOW_CODES.includes(cur.weather_code), sleetNow: SLEET_CODES.includes(cur.weather_code),
+      snow24h: sumSnow, nextSnow
     };
   } catch(err){
+    if(retry < MAX_RETRY){
+      await new Promise(r=>setTimeout(r, 600));
+      return fetchOneWithRetry(scene, retry + 1);
+    }
     return { id: scene.id, ok: false, err: err.message };
   }
 }
@@ -344,7 +339,6 @@ function classifyStatus(item){
   if(item.nextSnow) return "soon";
   return "none";
 }
-
 function formatTime(iso){
   if(!iso) return "";
   const d = new Date(iso);
@@ -352,7 +346,7 @@ function formatTime(iso){
 }
 
 async function loadAll(){
-  byId("pillTxt").textContent = "逐个获取天气…";
+  byId("pillTxt").textContent = "正在获取天气…";
   byId("pillDot").className = "dot warn";
   const cachedRaw = localStorage.getItem(CACHE_KEY);
   let cached = null;
@@ -360,47 +354,49 @@ async function loadAll(){
   if(cached && cached.ts && Date.now() - cached.ts < CACHE_MIN*60000 && cached.data){
     mv.list = cached.data;
     buildUI();
+    byId("pillTxt").textContent = "使用缓存天气";
+    byId("pillDot").className = "dot";
     return;
   }
   mv.list = [];
   for(const s of SCENES){
-    const w = await fetchOne(s);
+    const w = await fetchOneWithRetry(s);
     mv.list.push({ scene: s, weather: w });
     buildUI();
   }
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: mv.list }));
-  } catch(e){}
-  byId("pillTxt").textContent = "天气已更新";
-  byId("pillDot").className = "dot";
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: mv.list })); } catch(e){}
+  const failCount = mv.list.filter(x=>!x.weather.ok).length;
+  if(failCount > 0){
+    byId("pillTxt").textContent = `${failCount}个地点获取失败`;
+    byId("pillDot").className = "dot err";
+  }else{
+    byId("pillTxt").textContent = "天气已更新";
+    byId("pillDot").className = "dot";
+  }
 }
 
 function buildUI(){
   buildSheet();
   setPlace(mv.cur, true);
 }
-
 function setPlace(idx, instant){
   if(idx < 0 || idx >= mv.list.length) return;
   mv.cur = idx;
   const entry = mv.list[idx];
   const status = classifyStatus(entry.weather);
   window.drawScene(entry.scene.id, status);
-
   byId("placeCn").textContent = entry.scene.name;
   byId("placeMeta").textContent = entry.scene.region;
   byId("place").classList.toggle("quiet", !(status === "snow" || status === "sleet"));
-
   fillWeatherPanel(entry, status);
 }
-
 function fillWeatherPanel(entry, status){
   const w = entry.weather;
   byId("wxPlace").textContent = entry.scene.name;
   if(!w.ok){
     byId("wxTemp").textContent = "—";
     byId("wxCond").textContent = "获取失败";
-    byId("wxRows").innerHTML = `<div class="wr"><span>提示</span><b>网络或接口异常</b></div>`;
+    byId("wxRows").innerHTML = `<div class="wr"><span>提示</span><b>网络异常，可开演示下雪</b></div>`;
     return;
   }
   byId("wxTemp").textContent = (w.temp != null ? w.temp + "°" : "—");
@@ -408,11 +404,9 @@ function fillWeatherPanel(entry, status){
   if(status === "snow") condText = mv.demo ? "演示降雪" : "正在下雪";
   else if(status === "sleet") condText = "雨夹雪";
   else if(status === "soon") condText = "即将下雪";
-  else if(status === "error") condText = "获取失败";
   byId("wxCond").textContent = condText;
-
   const rows = [
-    ["风速", w.wind != null ? w.wind + " m/s" : "—"],
+    ["风速", w.wind != null ? w.wind + " km/h" : "—"],
     ["未来24h降雪", w.snow24h != null ? w.snow24h.toFixed(1) + " cm" : "—"],
     ["预计开始", w.nextSnow ? formatTime(w.nextSnow) : "—"],
     ["状态", condText]
@@ -455,19 +449,14 @@ function buildSheet(){
     + renderGroup("获取失败", groups.error, "err");
   byId("sheetBody").innerHTML = body;
   byId("sheetCount").textContent = mv.list.length + " 个地点";
-
   byId("sheetFoot").innerHTML = `
     <div class="demo-row" id="demoRow">
       <span>演示：全部地点开启下雪</span>
       <span class="toggle" role="switch" aria-checked="${mv.demo ? "true" : "false"}" id="demoTog"></span>
     </div>
   `;
-
   byId("sheetBody").querySelectorAll(".row").forEach(btn => {
-    btn.onclick = () => {
-      setPlace(Number(btn.dataset.i), false);
-      closeSheet();
-    };
+    btn.onclick = () => { setPlace(Number(btn.dataset.i), false); closeSheet(); };
   });
   byId("demoRow").onclick = () => {
     mv.demo = !mv.demo;
@@ -475,23 +464,9 @@ function buildSheet(){
     buildUI();
   };
 }
-
-function openSheet(){
-  buildSheet();
-  byId("sheet").classList.add("open");
-  byId("mask").classList.add("open");
-  byId("pill").setAttribute("aria-expanded", "true");
-}
-function closeSheet(){
-  byId("sheet").classList.remove("open");
-  byId("mask").classList.remove("open");
-  byId("pill").setAttribute("aria-expanded", "false");
-}
-
-byId("pill").onclick = () => {
-  if(byId("sheet").classList.contains("open")) closeSheet();
-  else openSheet();
-};
+function openSheet(){ buildSheet(); byId("sheet").classList.add("open"); byId("mask").classList.add("open"); byId("pill").setAttribute("aria-expanded", "true"); }
+function closeSheet(){ byId("sheet").classList.remove("open"); byId("mask").classList.remove("open"); byId("pill").setAttribute("aria-expanded", "false"); }
+byId("pill").onclick = () => { if(byId("sheet").classList.contains("open")) closeSheet(); else openSheet(); };
 byId("mask").onclick = closeSheet;
 byId("wxBtn").onclick = () => {
   const card = byId("wxCard");
@@ -501,14 +476,12 @@ byId("wxBtn").onclick = () => {
   btn.setAttribute("aria-expanded", open ? "true" : "false");
 };
 
-// Canvas 雪景渲染
 const canvas = byId("bgCanvas");
 const ctx = canvas.getContext("2d");
 let W, H;
 let stars = [];
 let snowList = [];
 let showSnow = false;
-
 function resize(){
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
@@ -517,84 +490,62 @@ function resize(){
   createStars();
 }
 window.addEventListener("resize", resize);
-
 function createStars(){
   stars = [];
   const count = Math.floor((W * H) / 1300);
   for(let i = 0; i < count; i++){
     stars.push({
-      x: Math.random() * W,
-      y: Math.random() * H * 0.75,
-      r: Math.random() * 1.1 + 0.25,
-      baseA: Math.random() * 0.5 + 0.2,
-      spd: Math.random() * 0.0022 + 0.0006,
-      phase: Math.random() * Math.PI * 2
+      x: Math.random() * W, y: Math.random() * H * 0.75,
+      r: Math.random() * 1.1 + 0.25, baseA: Math.random() * 0.5 + 0.2,
+      spd: Math.random() * 0.0022 + 0.0006, phase: Math.random() * Math.PI * 2
     });
   }
 }
-
 function resetSnow(enable){
-  showSnow = enable;
-  snowList = [];
+  showSnow = enable; snowList = [];
   if(!enable) return;
   const cnt = 450;
   for(let i = 0; i < cnt; i++){
     snowList.push({
-      x: Math.random() * W,
-      y: Math.random() * -H,
-      r: Math.random() * 2.2 + 0.6,
-      ys: Math.random() * 1.2 + 0.7,
-      xDrift: Math.random() * 0.4 - 0.2,
-      phase: Math.random() * Math.PI * 2
+      x: Math.random() * W, y: Math.random() * -H,
+      r: Math.random() * 2.2 + 0.6, ys: Math.random() * 1.2 + 0.7,
+      xDrift: Math.random() * 0.4 - 0.2, phase: Math.random() * Math.PI * 2
     });
   }
 }
-
 function drawBackground(){
   const gradSky = ctx.createLinearGradient(0,0,0,H);
   gradSky.addColorStop(0,"#070e20");
   gradSky.addColorStop(0.45,"#122444");
   gradSky.addColorStop(1,"#203860");
-  ctx.fillStyle = gradSky;
-  ctx.fillRect(0,0,W,H);
-
+  ctx.fillStyle = gradSky; ctx.fillRect(0,0,W,H);
   ctx.fillStyle = "#141f33";
-  ctx.beginPath();
-  ctx.moveTo(0,H);
+  ctx.beginPath(); ctx.moveTo(0,H);
   for(let x = 0; x <= W; x += 120){
     const h = H * 0.38 + Math.sin(x * 0.007) * H * 0.16 + Math.cos(x * 0.013) * H * 0.08;
     ctx.lineTo(x, h);
   }
-  ctx.lineTo(W, H);
-  ctx.fill();
-
+  ctx.lineTo(W, H); ctx.fill();
   ctx.fillStyle = "#0f1726";
-  ctx.beginPath();
-  ctx.moveTo(0,H);
+  ctx.beginPath(); ctx.moveTo(0,H);
   for(let x = 0; x <= W; x += 80){
     const h = H * 0.55 + Math.sin(x * 0.011) * H * 0.11;
     ctx.lineTo(x, h);
   }
-  ctx.lineTo(W, H);
-  ctx.fill();
-
+  ctx.lineTo(W, H); ctx.fill();
   const gradGround = ctx.createLinearGradient(0, H * 0.72, 0, H);
   gradGround.addColorStop(0, "#a0b4d4");
   gradGround.addColorStop(1, "#354460");
-  ctx.fillStyle = gradGround;
-  ctx.fillRect(0, H * 0.72, W, H * 0.28);
+  ctx.fillStyle = gradGround; ctx.fillRect(0, H * 0.72, W, H * 0.28);
 }
-
 function render(time){
   ctx.clearRect(0,0,W,H);
   drawBackground();
   for(const s of stars){
     const tw = Math.sin(time * s.spd + s.phase);
     const alpha = s.baseA * (0.4 + 0.6 * tw);
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`; ctx.fill();
   }
   if(showSnow){
     for(const f of snowList){
@@ -607,24 +558,17 @@ function render(time){
       g.addColorStop(0, "rgba(255,255,255,0.92)");
       g.addColorStop(0.6, "rgba(255,255,255,0.45)");
       g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-      ctx.fillStyle = g;
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+      ctx.fillStyle = g; ctx.fill();
     }
   }
   requestAnimationFrame(render);
 }
-
-window.drawScene = function(id, status){
-  resetSnow(status === "snow" || status === "sleet");
-};
-
-resize();
-requestAnimationFrame(render);
-
+window.drawScene = function(id, status){ resetSnow(status === "snow" || status === "sleet"); };
+resize(); requestAnimationFrame(render);
 loadAll();
 setInterval(loadAll, CACHE_MIN * 60000);
 </script>
+
 </body>
 </html>
