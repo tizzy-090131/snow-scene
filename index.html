@@ -1,419 +1,1443 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>雪境 · 3D氛围场景</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>今日雪</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23f2f4f6' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M12 2.5v19M4 7.2l16 9.6M4 16.8l16-9.6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://miaoda.feishu.cn">
+<link rel="preconnect" href="https://sf3-scmcdn-cn.feishucdn.com" crossorigin>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Sans+SC:wght@200;300;400&amp;display=swap">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#050810;font-family:system-ui,sans-serif;color:#fff}
-canvas{display:block}
-#app{position:relative;width:100%;height:100%}
-.ui-wrap{position:fixed;z-index:10;inset:0;pointer-events:none}
-.ui-wrap>*{pointer-events:auto}
-.btn-place{
-  position:absolute;
-  left:12px;
-  bottom:12px;
-  padding:10px 16px;
-  background:rgba(20,30,48,0.75);
-  border:1px solid rgba(255,255,255,0.18);
-  border-radius:12px;
-  color:#fff;
-  font-size:14px;
-  cursor:pointer;
-  backdrop-filter:blur(6px);
+:root{
+  --white:#F4F6F8;
+  --gray:#8A9099;
+  --gray-2:#4C525A;
+  --line:rgba(255,255,255,.14);
+  --line-soft:rgba(255,255,255,.07);
+  --serif:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC","SimSun",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --ease:cubic-bezier(.22,1,.36,1);
 }
-.place-panel{
-  position:fixed;
-  left:12px;
-  bottom:70px;
-  width:clamp(250px,32vw,340px);
-  max-height:46vh;
-  background:rgba(10,16,28,0.72);
-  border:1px solid rgba(255,255,255,0.16);
-  border-radius:14px;
-  padding:12px;
-  overflow-y:auto;
-  backdrop-filter:blur(8px);
-  display:none;
+*{box-sizing:border-box}
+html,body{
+  margin:0;padding:0;height:100%;background:#000;color:var(--white);
+  font-family:var(--sans);overflow:hidden;overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
 }
-.place-panel.show{display:block}
-.place-item{
-  padding:7px 9px;
-  border-radius:8px;
-  font-size:13px;
-  cursor:pointer;
-  transition:0.18s;
+button{font-family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+:focus-visible{outline:1.5px solid rgba(255,255,255,.6);outline-offset:3px}
+
+/* ===== 舞台 ===== */
+#stage{position:fixed;inset:0;overflow:hidden;background:#000}
+
+.bg{position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(112% 64% at 50% 86%, rgba(255,255,255,.15) 0%, rgba(255,255,255,.055) 38%, rgba(0,0,0,0) 74%),
+    radial-gradient(64% 34% at 50% 99%, rgba(255,255,255,.13) 0%, rgba(0,0,0,0) 72%),
+    #000;
 }
-.place-item:hover{background:rgba(255,255,255,0.1)}
-.place-item.active{background:rgba(120,170,255,0.22)}
-.info-tip{
-  position:absolute;
-  right:12px;
-  bottom:12px;
-  padding:9px 13px;
-  background:rgba(10,16,28,0.65);
-  border:1px solid rgba(255,255,255,0.12);
-  border-radius:10px;
-  font-size:12px;
-  backdrop-filter:blur(6px);
+.scene-svg{
+  position:absolute;left:0;right:0;bottom:0;width:100%;height:100%;
+  pointer-events:none;overflow:visible;
+  opacity:1;transition:opacity .45s var(--ease);
 }
-.snow-toggle{
-  position:absolute;
-  right:12px;
-  top:12px;
-  padding:9px 14px;
-  background:rgba(10,16,28,0.7);
-  border:1px solid rgba(255,255,255,0.15);
-  border-radius:10px;
-  font-size:13px;
-  cursor:pointer;
-  backdrop-filter:blur(6px);
+.scene-svg svg{width:100%;height:100%;display:block;overflow:visible}
+.scene-svg .mass{fill:#040507}
+.scene-svg .mass-back{fill:#090B0E}
+.scene-svg .ground{fill:#050607}
+.scene-svg .hair{fill:none;stroke:rgba(255,255,255,.075);stroke-width:1.3;stroke-linecap:round}
+.scene-svg .snowline{fill:none;stroke:rgba(255,255,255,.13);stroke-width:1.6}
+.glow{position:absolute;left:0;right:0;bottom:0;height:15%;pointer-events:none;
+  background:radial-gradient(72% 100% at 50% 100%, rgba(255,255,255,.17) 0%, rgba(255,255,255,.05) 52%, rgba(0,0,0,0) 78%);
+}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.vig{position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:
+    radial-gradient(118% 92% at 50% 46%, rgba(0,0,0,0) 38%, rgba(2,6,12,.36) 76%, rgba(2,5,10,.66) 100%),
+    linear-gradient(180deg, rgba(2,6,12,.30) 0%, rgba(0,0,0,0) 26%);
+}
+#gl:active{cursor:grabbing}
+
+/* ===== 液态玻璃 ===== */
+.glass{
+  background:linear-gradient(180deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.055) 46%, rgba(255,255,255,.03) 100%);
+  border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    0 10px 30px rgba(0,0,0,.45);
+}
+
+/* ===== 左上角胶囊 ===== */
+.pill{
+  position:absolute;top:calc(16px + env(safe-area-inset-top));left:16px;
+  height:42px;padding:0 14px 0 12px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:9px;
+  z-index:30;
+  transition:transform .3s var(--ease);
+}
+.pill:active{transform:scale(.97)}
+.pill .dot{
+  width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.85);
+  box-shadow:0 0 10px rgba(255,255,255,.75);flex:none;
+}
+.pill .dot.off{background:rgba(255,255,255,.28);box-shadow:none}
+.pill .dot.warn{background:rgba(255,255,255,.55);box-shadow:0 0 8px rgba(255,255,255,.4)}
+.pill .txt{
+  font-size:13px;letter-spacing:.06em;white-space:nowrap;color:rgba(255,255,255,.94);
+}
+.pill .chev{width:11px;height:11px;opacity:.6;flex:none;display:block}
+.pill .chev svg{width:11px;height:11px;display:block}
+
+/* ===== 地点名 ===== */
+.place{
+  position:absolute;left:22px;bottom:calc(28px + env(safe-area-inset-bottom));
+  z-index:20;pointer-events:none;
+  transition:opacity .4s var(--ease);
+}
+.place .cn{
+  display:block;font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-weight:300;
+  font-size:29px;letter-spacing:.16em;line-height:1.2;
+  text-shadow:0 2px 22px rgba(0,0,0,.95);
+  transition:opacity .4s var(--ease);
+}
+.place .meta{
+  display:block;margin-top:5px;
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-weight:300;
+  font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);
+  text-shadow:0 1px 14px rgba(0,0,0,.95);
+  transition:opacity .4s var(--ease);
+}
+.place.quiet .cn,.place.quiet .meta{opacity:.42}
+
+/* ===== 天气按钮 + 卡片 ===== */
+.wx-btn{
+  position:absolute;right:16px;bottom:calc(28px + env(safe-area-inset-bottom));
+  width:46px;height:46px;border-radius:50%;
+  display:grid;place-items:center;z-index:30;
+  transition:transform .3s var(--ease);
+}
+.wx-btn:active{transform:scale(.94)}
+.wx-btn svg{width:18px;height:18px;stroke:rgba(255,255,255,.8);fill:none;stroke-width:1.5}
+.wx-btn.on{background:linear-gradient(180deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.10) 100%)}
+
+.wx{
+  position:absolute;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));
+  width:218px;border-radius:18px;padding:14px 16px 15px;
+  z-index:29;transform-origin:100% 100%;
+  transform:translateY(6px) scale(.94);opacity:0;pointer-events:none;
+  transition:opacity .26s var(--ease),transform .32s var(--ease);
+}
+.wx.open{opacity:1;transform:none;pointer-events:auto}
+.wx .wtitle{
+  font-size:10px;letter-spacing:.22em;color:var(--gray);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+}
+.wx .wbig{margin-top:9px;display:flex;align-items:baseline;gap:8px}
+.wx .wbig .t{font-size:30px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wx .wbig .s{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.72)}
+.wx .wrows{margin-top:12px;display:grid;gap:7px}
+.wx .wr{
+  display:flex;justify-content:space-between;gap:10px;
+  font-size:11.5px;color:var(--gray);letter-spacing:.04em;
+  border-top:1px solid var(--line-soft);padding-top:7px;
+}
+.wx .wr b{font-weight:400;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
+
+/* ===== 选择面板 ===== */
+.sheet-mask{
+  position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .32s var(--ease);
+}
+.sheet-mask.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:41;
+  max-height:74vh;display:flex;flex-direction:column;
+  border-radius:22px 22px 0 0;
+  background:linear-gradient(180deg, rgba(26,28,33,.88) 0%, rgba(11,12,15,.94) 100%);
+  -webkit-backdrop-filter:blur(28px) saturate(170%);
+  backdrop-filter:blur(28px) saturate(170%);
+  border-top:1px solid rgba(255,255,255,.14);
+  box-shadow:0 -18px 50px rgba(0,0,0,.55);
+  transform:translateY(101%);
+  transition:transform .42s var(--ease);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.sheet.open{transform:none}
+.sheet-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px 10px;flex:none;
+}
+.sheet-head .h{font-size:11px;letter-spacing:.24em;color:var(--gray)}
+.sheet-head .n{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums}
+.sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px}
+.sheet-foot{flex:none;padding:0 10px calc(14px + env(safe-area-inset-bottom))}
+.grp{font-size:10px;letter-spacing:.22em;color:var(--gray-2);padding:14px 10px 6px}
+.row{
+  display:flex;align-items:center;gap:12px;width:100%;
+  min-height:56px;padding:10px 12px;border-radius:14px;
+  text-align:left;transition:background .2s;
+}
+.row:active{background:rgba(255,255,255,.09)}
+.row:hover{background:rgba(255,255,255,.05)}
+.row .nm{font-size:14.5px;letter-spacing:.08em;line-height:1.35}
+.row .rg{display:block;font-size:10px;letter-spacing:.16em;color:var(--gray-2);margin-top:2px}
+.row .rt{
+  margin-left:auto;font-size:12px;color:rgba(255,255,255,.72);
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  display:flex;align-items:center;gap:8px;
+}
+.row .sd{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.8)}
+.row .sd.soon{background:rgba(255,255,255,.4);box-shadow:none}
+.row .sd.none{background:rgba(255,255,255,.16);box-shadow:none}
+.row.dim .nm{color:rgba(255,255,255,.55)}
+.row.cur{background:rgba(255,255,255,.07)}
+.grabber{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:8px auto -2px;flex:none}
+
+.demo-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:4px 10px 8px;padding:12px;border-radius:14px;
+  border:1px solid var(--line-soft);width:calc(100% - 20px);
+}
+.demo-row span{font-size:12px;letter-spacing:.08em;color:rgba(255,255,255,.7)}
+.toggle{
+  width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,.14);
+  position:relative;flex:none;transition:background .25s;
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+  background:rgba(255,255,255,.9);transition:transform .3s var(--ease);
+}
+.toggle[aria-checked="true"]{background:rgba(255,255,255,.55)}
+.toggle[aria-checked="true"]::after{transform:translateX(18px)}
+
+@media (min-width:768px){
+  .pill{top:22px;left:24px;height:44px}
+  .place{left:30px;bottom:34px}
+  .place .cn{font-size:33px}
+  .wx-btn{right:24px;bottom:34px}
+  .wx{right:24px;bottom:92px}
+  .sheet{left:auto;right:20px;bottom:20px;width:368px;border-radius:20px;
+    max-height:74vh;transform:translateY(14px) scale(.97);opacity:0;
+    transition:opacity .26s var(--ease),transform .3s var(--ease);
+    border:1px solid rgba(255,255,255,.14);}
+  .sheet.open{transform:none;opacity:1}
+  .sheet-mask{background:rgba(0,0,0,.26)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:.01s!important;animation-duration:.01s!important}
 }
 </style>
 </head>
 <body>
-<div id="app">
-  <canvas id="mainCanvas"></canvas>
-  <div class="ui-wrap">
-    <button class="btn-place" id="btnPlace">切换地点</button>
-    <div class="place-panel" id="placePanel"></div>
-    <div class="info-tip">滚轮缩放 · 点击地点切换远景</div>
-    <button class="snow-toggle" id="snowToggle">下雪：开启</button>
+
+<div id="stage">
+  <div class="vig"></div>
+  <button class="pill glass" id="pill" aria-label="选择地点" aria-expanded="false">
+    <span class="dot warn" id="pillDot"></span>
+    <span class="txt" id="pillTxt">正在获取降雪…</span>
+    <span class="chev" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.6"><path d="M6 9l6 6 6-6"/></svg>
+    </span>
+  </button>
+
+  <div class="place" id="place">
+    <span class="cn" id="placeCn">—</span>
+    <span class="meta" id="placeMeta"></span>
+  </div>
+
+  <button class="wx-btn glass" id="wxBtn" aria-label="查看天气" aria-expanded="false">
+    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9.6 13.4V5.4a2.3 2.3 0 014.6 0v8a4.1 4.1 0 11-4.6 0z"/><path d="M11.9 10.2v5.2" opacity=".55"/></svg>
+  </button>
+
+  <div class="wx glass" id="wxCard" role="dialog" aria-label="天气详情">
+    <div class="wtitle"><span>此刻</span><span id="wxPlace"></span></div>
+    <div class="wbig"><span class="t" id="wxTemp">—</span><span class="s" id="wxCond"></span></div>
+    <div class="wrows" id="wxRows"></div>
   </div>
 </div>
 
-<script>
-const canvas = document.getElementById('mainCanvas');
-const ctx = canvas.getContext('2d');
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
-resize();
-addEventListener('resize',resize);
+<div class="sheet-mask" id="mask"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="选择地点">
+  <div class="grabber"></div>
+  <div class="sheet-head">
+    <span class="h">选择地点</span>
+    <span class="n" id="sheetCount"></span>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+  <div class="sheet-foot" id="sheetFoot"></div>
+</div>
 
-// 地点列表 + 对应绘制标识
-const placeList = [
-  {id:'altai',name:'阿勒泰'},
-  {id:'changbaishan',name:'长白山'},
-  {id:'shangrila',name:'香格里拉'},
-  {id:'niantanggula',name:'念青唐古拉'},
-  {id:'hulunbuir',name:'呼伦贝尔'},
-  {id:'tianshan',name:'天山'},
-  {id:'qilianshan',name:'祁连山'},
-  {id:'gongga',name:'贡嘎雪山'},
-  {id:'k2',name:'乔戈里峰'},
-  {id:'meili',name:'梅里雪山'},
-  {id:'daocheng',name:'稻城亚丁'},
-  {id:'helan',name:'贺兰山'},
-  {id:'harbin',name:'哈尔滨'},
-  {id:'changchun',name:'长春'},
-  {id:'shenyang',name:'沈阳'},
-  {id:'lhasa',name:'拉萨'},
-  {id:'beijing',name:'北京'},
-  {id:'hangzhou',name:'杭州'},
-  {id:'fuji',name:'富士山'},
-  {id:'sapporo',name:'札幌'},
-  {id:'matterhorn',name:'马特洪峰'},
-  {id:'jungfrau',name:'少女峰'},
-  {id:'rovaniemi',name:'罗瓦涅米'},
-  {id:'tromso',name:'特罗姆瑟'},
-  {id:'banff',name:'班夫落基山'},
-  {id:'kilimanjaro',name:'乞力马扎罗'},
-  {id:'montblanc',name:'勃朗峰'},
-  {id:'rainier',name:'雷尼尔山'}
+<script id="scenes-data">
+const SCENES=[{"id": "fuji", "name": "富士山", "region": "日本 · 静冈县", "lat": 35.36, "lon": 138.73, "back": "", "front": "M20.0,556.0 110.0,486.0 200.0,412.0 280.0,340.0 340.0,296.0 390.0,246.0 432.0,196.0 468.0,158.0 488.0,144.0 500.0,140.0 512.0,148.0 524.0,158.0 556.0,196.0 598.0,244.0 640.0,292.0 700.0,356.0 770.0,430.0 838.0,494.0 900.0,532.0 940.0,556.0 Z", "hair": "M300.0,346.0 C362,300 404,266 440,238 M690.0,346.0 C646,306 610,272 574,246 M466.0,214.0 C480,200 492,190 500,184"},
+{"id": "sapporo", "name": "札幌", "region": "日本 · 北海道", "lat": 43.06, "lon": 141.35, "back": "M-40.0,556.0 90.0,470.0 180.0,432.0 280.0,466.0 400.0,444.0 520.0,470.0 640.0,438.0 760.0,468.0 880.0,440.0 1040.0,556.0 1040.0,636.0 -40.0,636.0 Z", "front": "M446,556 L492,300 L500,258 L508,300 L554,556 L548,556 L506,320 L494,320 L452,556 Z M462.0,232.0 540.0,232.0 540.0,256.0 462.0,256.0 Z M470.0,208.0 532.0,208.0 532.0,218.0 470.0,218.0 Z M496,208 L498,150 L502,150 L504,208 Z M499,150 L500,112 L501,150 Z M430.0,262.0 570.0,262.0 570.0,268.0 430.0,268.0 Z M250.0,520.0 400.0,520.0 400.0,556.0 250.0,556.0 Z M310.0,536.0 400.0,536.0 400.0,556.0 310.0,556.0 Z M600.0,516.0 770.0,516.0 770.0,556.0 600.0,556.0 Z M700.0,534.0 760.0,534.0 760.0,556.0 700.0,556.0 Z M140.0,534.0 220.0,534.0 220.0,556.0 140.0,556.0 Z M820.0,532.0 890.0,532.0 890.0,556.0 820.0,556.0 Z", "hair": " M452.0,506.0 548.0,452.0 M548.0,506.0 452.0,452.0 M458.0,430.0 542.0,382.0 M542.0,430.0 458.0,382.0 M466.0,352.0 534.0,304.0 M534.0,352.0 466.0,304.0"},
+{"id": "changbai", "name": "长白山", "region": "中国 · 吉林", "lat": 42.0, "lon": 128.06, "back": "M-60.0,556.0 70.0,392.0 180.0,312.0 280.0,360.0 380.0,318.0 470.0,362.0 560.0,304.0 650.0,352.0 760.0,306.0 860.0,362.0 960.0,326.0 1060.0,556.0 1060.0,636.0 -60.0,636.0 Z", "front": "M-20.0,556.0 90.0,494.0 180.0,424.0 262.0,352.0 320.0,330.0 368.0,376.0 410.0,398.0 430.0,404.0 570.0,404.0 596.0,392.0 636.0,352.0 690.0,306.0 742.0,342.0 800.0,398.0 860.0,452.0 920.0,506.0 975.0,556.0 Z", "hair": " M430.0,404.0 570.0,404.0 M156.0,440.0 C220,404 268,376 320,352 M800.0,398.0 C760,372 720,338 690,312"},
+{"id": "sophia", "name": "圣索菲亚教堂", "region": "中国 · 哈尔滨", "lat": 45.75, "lon": 126.65, "back": "", "front": "M292.0,404.0 708.0,404.0 708.0,556.0 292.0,556.0 Z M268.0,470.0 300.0,470.0 300.0,556.0 268.0,556.0 Z M700.0,470.0 734.0,470.0 734.0,556.0 700.0,556.0 Z M384.0,336.0 476.0,336.0 476.0,378.0 384.0,378.0 Z M387.6,340.0 C364.3,318.8 368.5,304.6 377.0,292.8 C387.6,275.1 408.8,262.1 416.2,246.8 C423.6,235.0 426.3,227.9 430.0,222.0 C433.7,227.9 436.4,235.0 443.8,246.8 C451.2,262.1 472.4,275.1 483.0,292.8 C491.5,304.6 495.7,318.8 472.4,340.0 Z M427.8,222.0 L430.0,216.0 L432.2,222.0 Z M478.0,372.0 536.0,372.0 536.0,404.0 478.0,404.0 Z M480.8,374.0 C465.8,360.3 468.6,351.2 474.0,343.6 C480.8,332.2 494.4,323.8 499.2,314.0 C503.9,306.4 505.6,301.8 508.0,298.0 C510.4,301.8 512.1,306.4 516.8,314.0 C521.6,323.8 535.2,332.2 542.0,343.6 C547.4,351.2 550.2,360.3 535.2,374.0 Z M505.8,298.0 L508.0,293.0 L510.2,298.0 Z M206.0,430.0 262.0,430.0 262.0,470.0 206.0,470.0 Z M210.0,432.0 C196.8,418.7 199.2,409.8 204.0,402.4 C210.0,391.3 222.0,383.2 226.2,373.5 C230.4,366.1 231.9,361.7 234.0,358.0 C236.1,361.7 237.6,366.1 241.8,373.5 C246.0,383.2 258.0,391.3 264.0,402.4 C268.8,409.8 271.2,418.7 258.0,432.0 Z M231.8,358.0 L234.0,354.0 L236.2,358.0 Z M742.0,430.0 798.0,430.0 798.0,470.0 742.0,470.0 Z M746.0,432.0 C732.8,418.7 735.2,409.8 740.0,402.4 C746.0,391.3 758.0,383.2 762.2,373.5 C766.4,366.1 767.9,361.7 770.0,358.0 C772.1,361.7 773.6,366.1 777.8,373.5 C782.0,383.2 794.0,391.3 800.0,402.4 C804.8,409.8 807.2,418.7 794.0,432.0 Z M767.8,358.0 L770.0,354.0 L772.2,358.0 Z", "hair": "M318.0,470.0 L318.0,441.0 Q318.0,426.0 333.0,426.0 Q348.0,426.0 348.0,441.0 L348.0,470.0 Z M372.0,470.0 L372.0,441.0 Q372.0,426.0 387.0,426.0 Q402.0,426.0 402.0,441.0 L402.0,470.0 Z M612.0,470.0 L612.0,441.0 Q612.0,426.0 627.0,426.0 Q642.0,426.0 642.0,441.0 L642.0,470.0 Z M666.0,470.0 L666.0,441.0 Q666.0,426.0 681.0,426.0 Q696.0,426.0 696.0,441.0 L696.0,470.0 Z M474.0,470.0 L474.0,443.0 Q474.0,430.0 487.0,430.0 Q500.0,430.0 500.0,443.0 L500.0,470.0 Z M502.0,470.0 L502.0,443.0 Q502.0,430.0 515.0,430.0 Q528.0,430.0 528.0,443.0 L528.0,470.0 Z M318.0,540.0 L318.0,515.0 Q318.0,500.0 333.0,500.0 Q348.0,500.0 348.0,515.0 L348.0,540.0 Z M372.0,540.0 L372.0,515.0 Q372.0,500.0 387.0,500.0 Q402.0,500.0 402.0,515.0 L402.0,540.0 Z M474.0,540.0 L474.0,513.0 Q474.0,500.0 487.0,500.0 Q500.0,500.0 500.0,513.0 L500.0,540.0 Z M502.0,540.0 L502.0,513.0 Q502.0,500.0 515.0,500.0 Q528.0,500.0 528.0,513.0 L528.0,540.0 Z M612.0,540.0 L612.0,515.0 Q612.0,500.0 627.0,500.0 Q642.0,500.0 642.0,515.0 L642.0,540.0 Z M666.0,540.0 L666.0,515.0 Q666.0,500.0 681.0,500.0 Q696.0,500.0 696.0,515.0 L696.0,540.0 Z"},
+{"id": "corner", "name": "故宫角楼", "region": "中国 · 北京", "lat": 39.91, "lon": 116.4, "back": "", "front": "M40.0,470.0 960.0,470.0 960.0,556.0 40.0,556.0 Z M340.0,440.0 660.0,440.0 660.0,470.0 340.0,470.0 Z M254.0,476.0 C293.4,476.0 318.0,467.2 342.6,462.0 C396.7,455.0 445.9,444.0 470.5,436.0 L529.5,436.0 C554.1,444.0 603.3,455.0 657.4,462.0 C682.0,467.2 706.6,476.0 746.0,476.0 L746.0,486.0 254.0,486.0 Z M464.5,436.0 460.5,429.0 468.5,432.0 Z M535.5,436.0 539.5,429.0 531.5,432.0 Z M392.0,396.0 608.0,396.0 608.0,408.0 392.0,408.0 Z M294.0,410.0 C327.0,410.0 347.6,401.2 368.2,396.0 C413.5,389.9 454.7,380.0 475.3,372.0 L524.7,372.0 C545.3,380.0 586.5,389.9 631.8,396.0 C652.4,401.2 673.0,410.0 706.0,410.0 L706.0,420.0 294.0,420.0 Z M469.3,372.0 465.3,365.0 473.3,368.0 Z M530.7,372.0 534.7,365.0 526.7,368.0 Z M432.0,344.0 568.0,344.0 568.0,356.0 432.0,356.0 Z M344.0,357.0 C369.0,357.0 384.6,349.6 400.2,345.0 C434.5,337.0 465.7,326.0 481.3,318.0 L518.7,318.0 C534.3,326.0 565.5,337.0 599.8,345.0 C615.4,349.6 631.0,357.0 656.0,357.0 L656.0,367.0 344.0,367.0 Z M475.3,318.0 471.3,311.0 479.3,314.0 Z M524.7,318.0 528.7,311.0 520.7,314.0 Z M470.0,300.0 530.0,300.0 530.0,312.0 470.0,312.0 Z M500.0,300.0 486.0,282.0 514.0,282.0 Z M498.4,282.0 L498.4,266.0 L501.6,266.0 L501.6,282.0 Z M494.6,272.1 L505.4,272.1 L505.4,277.1 L494.6,277.1 Z", "hair": "M120.0,486.0 120.0,540.0 M170.0,486.0 170.0,540.0 M880.0,486.0 880.0,540.0 M830.0,486.0 830.0,540.0 M420.0,470.0 420.0,506.0 M580.0,470.0 580.0,506.0 M452.0,404.0 452.0,440.0 M548.0,404.0 548.0,440.0"},
+{"id": "tianshan", "name": "天山", "region": "中国 · 新疆", "lat": 43.79, "lon": 87.62, "back": "M-60.0,556.0 60.0,336.0 126.0,372.0 208.0,268.0 276.0,332.0 356.0,302.0 468.0,354.0 578.0,288.0 660.0,338.0 758.0,302.0 858.0,362.0 958.0,322.0 1060.0,556.0 1060.0,636.0 -60.0,636.0 Z", "front": "M0.0,556.0 88.0,432.0 158.0,378.0 228.0,412.0 308.0,320.0 358.0,354.0 418.0,402.0 498.0,434.0 568.0,406.0 638.0,354.0 708.0,302.0 758.0,340.0 818.0,394.0 888.0,442.0 948.0,502.0 1000.0,556.0 Z", "hair": " M208.0,268.0 L228.0,412.0 M578.0,288.0 L568.0,406.0 M758.0,302.0 L758.0,340.0 M308.0,320.0 C330,346 344,352 358,354"},
+{"id": "potala", "name": "布达拉宫", "region": "中国 · 拉萨", "lat": 29.66, "lon": 91.12, "back": "M0.0,556.0 C120.0,524.0 206.0,490.0 268.0,468.0 L732.0,468.0 C794.0,490.0 880.0,524.0 1000.0,556.0 Z", "front": "M214.0,468.0 470.0,468.0 470.0,318.0 286.0,318.0 258.0,352.0 240.0,404.0 226.0,436.0 Z M196.0,380.0 226.0,380.0 226.0,468.0 196.0,468.0 Z M470.0,468.0 596.0,468.0 596.0,246.0 506.0,246.0 492.0,286.0 486.0,330.0 476.0,392.0 Z M492.0,226.0 536.0,226.0 536.0,246.0 492.0,246.0 Z M548.0,236.0 588.0,236.0 588.0,252.0 548.0,252.0 Z M492.0,226.0 514.0,206.0 536.0,226.0 Z M548.0,236.0 568.0,218.0 588.0,236.0 Z M600.0,352.0 634.0,352.0 634.0,468.0 600.0,468.0 Z", "hair": "M304.0,352.0 316.0,352.0 316.0,370.0 304.0,370.0 Z M332.0,352.0 344.0,352.0 344.0,370.0 332.0,370.0 Z M360.0,352.0 372.0,352.0 372.0,370.0 360.0,370.0 Z M388.0,352.0 400.0,352.0 400.0,370.0 388.0,370.0 Z M416.0,352.0 428.0,352.0 428.0,370.0 416.0,370.0 Z M444.0,352.0 456.0,352.0 456.0,370.0 444.0,370.0 Z M304.0,424.0 316.0,424.0 316.0,442.0 304.0,442.0 Z M332.0,424.0 344.0,424.0 344.0,442.0 332.0,442.0 Z M360.0,424.0 372.0,424.0 372.0,442.0 360.0,442.0 Z M388.0,424.0 400.0,424.0 400.0,442.0 388.0,442.0 Z M416.0,424.0 428.0,424.0 428.0,442.0 416.0,442.0 Z M444.0,424.0 456.0,424.0 456.0,442.0 444.0,442.0 Z M560.0,344.0 572.0,344.0 572.0,362.0 560.0,362.0 Z M590.0,344.0 602.0,344.0 602.0,362.0 590.0,362.0 Z M620.0,344.0 632.0,344.0 632.0,362.0 620.0,362.0 Z M650.0,344.0 662.0,344.0 662.0,362.0 650.0,362.0 Z M680.0,344.0 692.0,344.0 692.0,362.0 680.0,362.0 Z M560.0,424.0 572.0,424.0 572.0,442.0 560.0,442.0 Z M590.0,424.0 602.0,424.0 602.0,442.0 590.0,442.0 Z M620.0,424.0 632.0,424.0 632.0,442.0 620.0,442.0 Z M650.0,424.0 662.0,424.0 662.0,442.0 650.0,442.0 Z M680.0,424.0 692.0,424.0 692.0,442.0 680.0,442.0 Z M199.0,302.0 223.0,302.0 223.0,368.0 199.0,368.0 Z"},
+{"id": "matterhorn", "name": "马特洪峰", "region": "瑞士 · 采尔马特", "lat": 45.98, "lon": 7.66, "back": "M-40.0,556.0 70.0,424.0 160.0,362.0 244.0,412.0 330.0,332.0 420.0,382.0 510.0,342.0 612.0,392.0 700.0,352.0 790.0,412.0 890.0,362.0 1060.0,556.0 1060.0,636.0 -40.0,636.0 Z", "front": "M40.0,556.0 128.0,474.0 212.0,404.0 292.0,326.0 350.0,246.0 392.0,188.0 414.0,120.0 428.0,134.0 448.0,208.0 474.0,290.0 512.0,364.0 556.0,436.0 606.0,502.0 652.0,556.0 Z", "hair": "M414.0,120.0 C426,182 438,242 458,302 M420.0,152.0 C396,204 368,266 340,320 M452.0,262.0 L486.0,300.0"},
+{"id": "jungfrau", "name": "少女峰", "region": "瑞士 · 伯尔尼", "lat": 46.55, "lon": 7.98, "back": "M-60.0,556.0 60.0,368.0 150.0,300.0 232.0,346.0 320.0,286.0 400.0,334.0 500.0,268.0 580.0,322.0 680.0,282.0 770.0,344.0 890.0,308.0 1060.0,556.0 1060.0,636.0 -60.0,636.0 Z", "front": "M0.0,556.0 64.0,472.0 132.0,408.0 202.0,444.0 262.0,376.0 318.0,412.0 372.0,352.0 420.0,300.0 452.0,262.0 476.0,286.0 500.0,330.0 534.0,382.0 576.0,410.0 636.0,414.0 676.0,352.0 726.0,318.0 780.0,372.0 836.0,430.0 898.0,480.0 952.0,522.0 1000.0,556.0 Z", "hair": "M318.0,412.0 C346,404 368,396 384,374 M576.0,410.0 C590,392 606,382 618,366 M424.0,306.0 C408,336 386,354 360,366"},
+{"id": "stbasil", "name": "圣瓦西里", "region": "俄罗斯 · 莫斯科", "lat": 55.75, "lon": 37.62, "back": "", "front": "M286.0,468.0 714.0,468.0 714.0,556.0 286.0,556.0 Z M322.0,428.0 678.0,428.0 678.0,472.0 322.0,472.0 Z M439.2,432.0 C405.8,397.8 411.8,375.0 424.0,356.0 C439.2,327.5 469.6,306.6 480.2,281.9 C490.9,262.9 494.7,251.5 500.0,242.0 C505.3,251.5 509.1,262.9 519.8,281.9 C530.4,306.6 560.8,327.5 576.0,356.0 C588.2,375.0 594.2,397.8 560.8,432.0 Z M497.8,242.0 L500.0,232.0 L502.2,242.0 Z M351.6,448.0 C332.7,427.8 336.1,414.4 343.0,403.2 C351.6,386.4 368.8,374.1 374.8,359.5 C380.8,348.3 383.0,341.6 386.0,336.0 C389.0,341.6 391.2,348.3 397.2,359.5 C403.2,374.1 420.4,386.4 429.0,403.2 C435.9,414.4 439.3,427.8 420.4,448.0 Z M383.8,336.0 L386.0,330.0 L388.2,336.0 Z M579.6,448.0 C560.7,427.8 564.1,414.4 571.0,403.2 C579.6,386.4 596.8,374.1 602.8,359.5 C608.8,348.3 611.0,341.6 614.0,336.0 C617.0,341.6 619.2,348.3 625.2,359.5 C631.2,374.1 648.4,386.4 657.0,403.2 C663.9,414.4 667.3,427.8 648.4,448.0 Z M611.8,336.0 L614.0,330.0 L616.2,336.0 Z M414.4,466.0 C400.3,451.6 402.9,442.0 408.0,434.0 C414.4,422.0 427.2,413.2 431.7,402.8 C436.2,394.8 437.8,390.0 440.0,386.0 C442.2,390.0 443.8,394.8 448.3,402.8 C452.8,413.2 465.6,422.0 472.0,434.0 C477.1,442.0 479.7,451.6 465.6,466.0 Z M437.8,386.0 L440.0,381.0 L442.2,386.0 Z M534.4,466.0 C520.3,451.6 522.9,442.0 528.0,434.0 C534.4,422.0 547.2,413.2 551.7,402.8 C556.2,394.8 557.8,390.0 560.0,386.0 C562.2,390.0 563.8,394.8 568.3,402.8 C572.8,413.2 585.6,422.0 592.0,434.0 C597.1,442.0 599.7,451.6 585.6,466.0 Z M557.8,386.0 L560.0,381.0 L562.2,386.0 Z M309.2,486.0 C297.8,474.8 299.8,467.4 304.0,461.2 C309.2,451.9 319.6,445.1 323.2,437.0 C326.9,430.8 328.2,427.1 330.0,424.0 C331.8,427.1 333.1,430.8 336.8,437.0 C340.4,445.1 350.8,451.9 356.0,461.2 C360.2,467.4 362.2,474.8 350.8,486.0 Z M327.8,424.0 L330.0,420.0 L332.2,424.0 Z M649.2,486.0 C637.8,474.8 639.8,467.4 644.0,461.2 C649.2,451.9 659.6,445.1 663.2,437.0 C666.9,430.8 668.2,427.1 670.0,424.0 C671.8,427.1 673.1,430.8 676.8,437.0 C680.4,445.1 690.8,451.9 696.0,461.2 C700.2,467.4 702.2,474.8 690.8,486.0 Z M667.8,424.0 L670.0,420.0 L672.2,424.0 Z M498.4,232.0 L498.4,206.0 L501.6,206.0 L501.6,232.0 Z M491.2,215.9 L508.8,215.9 L508.8,220.9 L491.2,220.9 Z M384.4,336.0 L384.4,314.0 L387.6,314.0 L387.6,336.0 Z M378.5,322.4 L393.5,322.4 L393.5,327.4 L378.5,327.4 Z M612.4,336.0 L612.4,314.0 L615.6,314.0 L615.6,336.0 Z M606.5,322.4 L621.5,322.4 L621.5,327.4 L606.5,327.4 Z", "hair": "M320.0,520.0 L320.0,491.0 Q320.0,474.0 337.0,474.0 Q354.0,474.0 354.0,491.0 L354.0,520.0 Z M384.0,520.0 L384.0,491.0 Q384.0,474.0 401.0,474.0 Q418.0,474.0 418.0,491.0 L418.0,520.0 Z M470.0,520.0 L470.0,491.0 Q470.0,476.0 485.0,476.0 Q500.0,476.0 500.0,491.0 L500.0,520.0 Z M536.0,520.0 L536.0,491.0 Q536.0,476.0 551.0,476.0 Q566.0,476.0 566.0,491.0 L566.0,520.0 Z M612.0,520.0 L612.0,491.0 Q612.0,474.0 629.0,474.0 Q646.0,474.0 646.0,491.0 L646.0,520.0 Z M676.0,520.0 L676.0,491.0 Q676.0,474.0 693.0,474.0 Q710.0,474.0 710.0,491.0 L710.0,520.0 Z M354.0,468.0 L354.0,447.0 Q354.0,434.0 367.0,434.0 Q380.0,434.0 380.0,447.0 L380.0,468.0 Z M620.0,468.0 L620.0,447.0 Q620.0,434.0 633.0,434.0 Q646.0,434.0 646.0,447.0 L646.0,468.0 Z"},
+{"id": "rovaniemi", "name": "罗瓦涅米", "region": "芬兰 · 拉普兰", "lat": 66.5, "lon": 25.73, "back": "M46.0,388.0 L65.0,455.2 L55.0,455.2 L79.0,509.0 L62.0,509.0 L96.0,558.0 L-4.0,558.0 L30.0,509.0 L13.0,509.0 L37.0,455.2 L27.0,455.2 Z M400.0,360.0 L422.4,438.4 L410.6,438.4 L438.9,501.1 L418.9,501.1 L459.0,558.0 L341.0,558.0 L381.1,501.1 L361.1,501.1 L389.4,438.4 L377.6,438.4 Z M600.0,382.0 L619.8,451.6 L609.4,451.6 L634.3,507.3 L616.6,507.3 L652.0,558.0 L548.0,558.0 L583.4,507.3 L565.7,507.3 L590.6,451.6 L580.2,451.6 Z M1010.0,396.0 L1028.2,460.0 L1018.6,460.0 L1041.7,511.2 L1025.4,511.2 L1058.0,558.0 L962.0,558.0 L994.6,511.2 L978.3,511.2 L1001.4,460.0 L991.8,460.0 Z", "front": "M112.0,346.0 L136.3,430.0 L123.5,430.0 L154.2,497.2 L132.5,497.2 L176.0,558.0 L48.0,558.0 L91.5,497.2 L69.8,497.2 L100.5,430.0 L87.7,430.0 Z M186.0,404.0 L203.5,464.8 L194.3,464.8 L216.4,513.4 L200.7,513.4 L232.0,558.0 L140.0,558.0 L171.3,513.4 L155.6,513.4 L177.7,464.8 L168.5,464.8 Z M258.0,312.0 L286.1,409.6 L271.3,409.6 L306.8,487.7 L281.7,487.7 L332.0,558.0 L184.0,558.0 L234.3,487.7 L209.2,487.7 L244.7,409.6 L229.9,409.6 Z M344.0,378.0 L363.8,449.2 L353.4,449.2 L378.3,506.2 L360.6,506.2 L396.0,558.0 L292.0,558.0 L327.4,506.2 L309.7,506.2 L334.6,449.2 L324.2,449.2 Z M700.0,360.0 L722.0,438.4 L710.4,438.4 L738.3,501.1 L718.6,501.1 L758.0,558.0 L642.0,558.0 L681.4,501.1 L661.7,501.1 L689.6,438.4 L678.0,438.4 Z M788.0,298.0 L817.6,401.2 L802.0,401.2 L839.5,483.8 L813.0,483.8 L866.0,558.0 L710.0,558.0 L763.0,483.8 L736.5,483.8 L774.0,401.2 L758.4,401.2 Z M872.0,386.0 L891.0,454.0 L881.0,454.0 L905.0,508.4 L888.0,508.4 L922.0,558.0 L822.0,558.0 L856.0,508.4 L839.0,508.4 L863.0,454.0 L853.0,454.0 Z M950.0,340.0 L974.7,426.4 L961.7,426.4 L992.9,495.5 L970.8,495.5 L1015.0,558.0 L885.0,558.0 L929.2,495.5 L907.1,495.5 L938.3,426.4 L925.3,426.4 Z M520.0,490.0 688.0,490.0 688.0,556.0 520.0,556.0 Z M504.0,490.0 604.0,436.0 704.0,490.0 Z M552.0,520.0 586.0,520.0 586.0,556.0 552.0,556.0 Z M650.0,432.0 670.0,432.0 670.0,470.0 650.0,470.0 Z", "hair": " M512.0,530.0 512.0,556.0 M672.0,530.0 672.0,556.0 M540.0,506.0 668.0,506.0"},
+{"id": "newyork", "name": "纽约", "region": "美国 · 曼哈顿", "lat": 40.71, "lon": -74.01, "back": "", "front": "M52.0,360.0 110.0,360.0 110.0,556.0 52.0,556.0 Z M57.0,336.0 105.0,336.0 105.0,352.0 57.0,352.0 Z M122.0,416.0 166.0,416.0 166.0,556.0 122.0,556.0 Z M126.0,392.0 162.0,392.0 162.0,408.0 126.0,408.0 Z M180.0,288.0 248.0,288.0 248.0,556.0 180.0,556.0 Z M187.0,264.0 241.0,264.0 241.0,280.0 187.0,280.0 Z M193.0,248.0 235.0,248.0 235.0,264.0 193.0,264.0 Z M262.0,384.0 300.0,384.0 300.0,556.0 262.0,556.0 Z M266.0,360.0 296.0,360.0 296.0,376.0 266.0,376.0 Z M312.0,226.0 366.0,226.0 366.0,556.0 312.0,556.0 Z M318.0,202.0 360.0,202.0 360.0,218.0 318.0,218.0 Z M323.0,186.0 355.0,186.0 355.0,202.0 323.0,202.0 Z M337.5,116.0 340.5,116.0 340.5,170.0 337.5,170.0 Z M382.0,352.0 414.0,352.0 414.0,556.0 382.0,556.0 Z M386.0,328.0 410.0,328.0 410.0,344.0 386.0,344.0 Z M430.0,164.0 474.0,164.0 474.0,556.0 430.0,556.0 Z M435.0,140.0 469.0,140.0 469.0,156.0 435.0,156.0 Z M440.0,124.0 464.0,124.0 464.0,140.0 440.0,140.0 Z M450.5,68.0 453.5,68.0 453.5,108.0 450.5,108.0 Z M490.0,250.0 562.0,250.0 562.0,556.0 490.0,556.0 Z M498.0,226.0 554.0,226.0 554.0,242.0 498.0,242.0 Z M505.0,210.0 547.0,210.0 547.0,226.0 505.0,226.0 Z M580.0,342.0 622.0,342.0 622.0,556.0 580.0,556.0 Z M584.0,318.0 618.0,318.0 618.0,334.0 584.0,334.0 Z M636.0,284.0 692.0,284.0 692.0,556.0 636.0,556.0 Z M642.0,260.0 686.0,260.0 686.0,276.0 642.0,276.0 Z M647.0,244.0 681.0,244.0 681.0,260.0 647.0,260.0 Z M706.0,392.0 742.0,392.0 742.0,556.0 706.0,556.0 Z M710.0,368.0 738.0,368.0 738.0,384.0 710.0,384.0 Z M756.0,332.0 818.0,332.0 818.0,556.0 756.0,556.0 Z M763.0,308.0 811.0,308.0 811.0,324.0 763.0,324.0 Z M768.0,292.0 806.0,292.0 806.0,308.0 768.0,308.0 Z M832.0,404.0 874.0,404.0 874.0,556.0 832.0,556.0 Z M837.0,380.0 869.0,380.0 869.0,396.0 837.0,396.0 Z M886.0,372.0 954.0,372.0 954.0,556.0 886.0,556.0 Z M894.0,348.0 946.0,348.0 946.0,364.0 894.0,364.0 Z", "hair": "M52.0,470.0 L110.0,470.0 M52.0,484.0 L110.0,484.0 M52.0,498.0 L110.0,498.0 M52.0,512.0 L110.0,512.0 M52.0,526.0 L110.0,526.0 M52.0,540.0 L110.0,540.0 M62.0,470.0 L62.0,550.0 M80.0,470.0 L80.0,550.0 M98.0,470.0 L98.0,550.0 M180.0,470.0 L248.0,470.0 M180.0,484.0 L248.0,484.0 M180.0,498.0 L248.0,498.0 M180.0,512.0 L248.0,512.0 M180.0,526.0 L248.0,526.0 M180.0,540.0 L248.0,540.0 M190.0,470.0 L190.0,550.0 M208.0,470.0 L208.0,550.0 M226.0,470.0 L226.0,550.0 M244.0,470.0 L244.0,550.0 M312.0,470.0 L366.0,470.0 M312.0,484.0 L366.0,484.0 M312.0,498.0 L366.0,498.0 M312.0,512.0 L366.0,512.0 M312.0,526.0 L366.0,526.0 M312.0,540.0 L366.0,540.0 M322.0,470.0 L322.0,550.0 M340.0,470.0 L340.0,550.0 M358.0,470.0 L358.0,550.0 M430.0,470.0 L474.0,470.0 M430.0,484.0 L474.0,484.0 M430.0,498.0 L474.0,498.0 M430.0,512.0 L474.0,512.0 M430.0,526.0 L474.0,526.0 M430.0,540.0 L474.0,540.0 M440.0,470.0 L440.0,550.0 M458.0,470.0 L458.0,550.0 M490.0,470.0 L562.0,470.0 M490.0,484.0 L562.0,484.0 M490.0,498.0 L562.0,498.0 M490.0,512.0 L562.0,512.0 M490.0,526.0 L562.0,526.0 M490.0,540.0 L562.0,540.0 M500.0,470.0 L500.0,550.0 M518.0,470.0 L518.0,550.0 M536.0,470.0 L536.0,550.0 M554.0,470.0 L554.0,550.0 M636.0,470.0 L692.0,470.0 M636.0,484.0 L692.0,484.0 M636.0,498.0 L692.0,498.0 M636.0,512.0 L692.0,512.0 M636.0,526.0 L692.0,526.0 M636.0,540.0 L692.0,540.0 M646.0,470.0 L646.0,550.0 M664.0,470.0 L664.0,550.0 M682.0,470.0 L682.0,550.0 M756.0,470.0 L818.0,470.0 M756.0,484.0 L818.0,484.0 M756.0,498.0 L818.0,498.0 M756.0,512.0 L818.0,512.0 M756.0,526.0 L818.0,526.0 M756.0,540.0 L818.0,540.0 M766.0,470.0 L766.0,550.0 M784.0,470.0 L784.0,550.0 M802.0,470.0 L802.0,550.0 M886.0,470.0 L954.0,470.0 M886.0,484.0 L954.0,484.0 M886.0,498.0 L954.0,498.0 M886.0,512.0 L954.0,512.0 M886.0,526.0 L954.0,526.0 M886.0,540.0 L954.0,540.0 M896.0,470.0 L896.0,550.0 M914.0,470.0 L914.0,550.0 M932.0,470.0 L932.0,550.0 M950.0,470.0 L950.0,550.0"},
+{"id": "whistler", "name": "惠斯勒", "region": "加拿大 · 不列颠哥伦比亚", "lat": 50.11, "lon": -122.95, "back": "M-60.0,556.0 50.0,414.0 140.0,340.0 232.0,396.0 318.0,330.0 410.0,386.0 506.0,324.0 600.0,382.0 690.0,340.0 790.0,398.0 890.0,350.0 1060.0,556.0 1060.0,636.0 -60.0,636.0 Z", "front": "M0.0,556.0 58.0,478.0 114.0,420.0 178.0,458.0 236.0,404.0 292.0,442.0 338.0,478.0 392.0,446.0 444.0,410.0 486.0,444.0 540.0,486.0 600.0,478.0 648.0,430.0 704.0,388.0 752.0,428.0 806.0,466.0 858.0,428.0 912.0,482.0 970.0,556.0 Z M392.0,508.0 552.0,508.0 552.0,556.0 392.0,556.0 Z M380.0,508.0 472.0,478.0 564.0,508.0 Z M568.0,516.0 684.0,516.0 684.0,556.0 568.0,556.0 Z M558.0,516.0 626.0,492.0 694.0,516.0 Z", "hair": "M120.0,432.0 C240,458 360,466 452,440 M452.0,440.0 C570,404 690,398 776,424 M418.0,516.0 418.0,556.0 M520.0,516.0 520.0,556.0 M604.0,524.0 604.0,556.0"},
+{"id": "gwanghwamun", "name": "光化门", "region": "韩国 · 首尔", "lat": 37.57, "lon": 126.98, "back": "M-60.0,556.0 64.0,444.0 150.0,396.0 238.0,440.0 336.0,388.0 438.0,432.0 552.0,394.0 652.0,438.0 748.0,400.0 844.0,446.0 944.0,404.0 1060.0,556.0 1060.0,636.0 -60.0,636.0 Z", "front": "M286.0,470.0 714.0,470.0 714.0,556.0 286.0,556.0 Z M268.0,475.0 C305.1,475.0 328.3,467.2 351.5,462.0 C402.6,455.0 449.0,444.0 472.2,436.0 L527.8,436.0 C551.0,444.0 597.4,455.0 648.5,462.0 C671.7,467.2 694.9,475.0 732.0,475.0 L732.0,485.0 268.0,485.0 Z M466.2,436.0 462.2,429.0 470.2,432.0 Z M533.8,436.0 537.8,429.0 529.8,432.0 Z M372.0,432.0 628.0,432.0 628.0,448.0 372.0,448.0 Z M308.0,442.0 C338.7,442.0 357.9,432.5 377.1,426.0 C419.4,416.6 457.8,400.0 477.0,392.0 L523.0,392.0 C542.2,400.0 580.6,416.6 622.9,426.0 C642.1,432.5 661.3,442.0 692.0,442.0 L692.0,452.0 308.0,452.0 Z M471.0,392.0 467.0,385.0 475.0,388.0 Z M529.0,392.0 533.0,385.0 525.0,388.0 Z M476.0,384.0 524.0,384.0 524.0,394.0 476.0,394.0 Z M300.0,470.0 316.0,470.0 316.0,556.0 300.0,556.0 Z M684.0,470.0 700.0,470.0 700.0,556.0 684.0,556.0 Z", "hair": "M344.0,556.0 L344.0,520.0 Q344.0,500.0 364.0,500.0 Q384.0,500.0 384.0,520.0 L384.0,556.0 Z M480.0,556.0 L480.0,520.0 Q480.0,500.0 500.0,500.0 Q520.0,500.0 520.0,520.0 L520.0,556.0 Z M616.0,556.0 L616.0,520.0 Q616.0,500.0 636.0,500.0 Q656.0,500.0 656.0,520.0 L656.0,556.0 Z M330.0,480.0 342.0,480.0 342.0,520.0 330.0,520.0 Z M660.0,480.0 672.0,480.0 672.0,520.0 660.0,520.0 Z"}];
+const FALLBACK = [
+ {id:'stbasil',temp:2.6,windspeed:0,snowing:false,sleet:false,next:null,mm:0},
+ {id:'fuji',temp:-4.4,snowing:false,sleet:false,next:'2026-11-14T19:00:00Z',mm:1.2},
+ {id:'tianshan',temp:2.9,snowing:false,sleet:false,next:'2026-11-13T19:00:00Z',mm:9.5},
+ {id:'rovaniemi',temp:-3.7,snowing:true,sleet:false,next:null,mm:2.4},
+ {id:'matterhorn',temp:-9.0,snowing:true,sleet:false,next:null,mm:5.1},
+ {id:'jungfrau',temp:-10.5,snowing:true,sleet:false,next:null,mm:3.6},
+ {id:'sapporo',temp:1.4,snowing:true,sleet:false,next:null,mm:1.8},
+ {id:'changbai',temp:-6.1,snowing:true,sleet:false,next:null,mm:4.2},
+ {id:'sophia',temp:0.7,snowing:false,sleet:false,next:null,mm:0},
+ {id:'corner',temp:8.6,snowing:false,sleet:false,next:null,mm:0},
+ {id:'potala',temp:-2.8,snowing:true,sleet:false,next:null,mm:1.1},
+ {id:'newyork',temp:5.9,snowing:false,sleet:false,next:null,mm:0},
+ {id:'whistler',temp:-1.0,snowing:true,sleet:false,next:null,mm:6.3},
+ {id:'gwanghwamun',temp:11.5,snowing:false,sleet:false,next:null,mm:0}
 ];
-let currentPlace = 'altai';
-let snowOn = true;
-let scale = 1;
-let stars = [];
-let snowParticles = [];
-
-// 星空初始化
-function initStar(){
-  stars = [];
-  for(let i=0;i<350;i++){
-    stars.push({
-      x:Math.random()*canvas.width,
-      y:Math.random()*canvas.height*0.72,
-      r:Math.random()*0.65+0.15,
-      twinkle:Math.random()*Math.PI*2,
-      speed:0.015+Math.random()*0.03
-    })
-  }
-}
-initStar();
-
-// 雪花粒子
-function createSnow(){
-  snowParticles = [];
-  for(let i=0;i<180;i++){
-    snowParticles.push({
-      x:Math.random()*canvas.width,
-      y:Math.random()*canvas.height,
-      r:Math.random()*2.2+0.4,
-      vy:Math.random()*1.2+0.6,
-      vx:Math.random()*0.4-0.2,
-      opacity:Math.random()*0.55+0.25
-    })
-  }
-}
-createSnow();
-
-// 绘制星空
-function drawStar(time){
-  stars.forEach(s=>{
-    s.twinkle += s.speed;
-    const alpha = 0.35 + Math.sin(s.twinkle)*0.32;
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fill();
-  })
-}
-
-// 绘制雪花
-function drawSnow(){
-  if(!snowOn) return;
-  snowParticles.forEach(p=>{
-    p.y += p.vy;
-    p.x += p.vx;
-    if(p.y>canvas.height){
-      p.y = -5;
-      p.x = Math.random()*canvas.width;
-    }
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${p.opacity})`;
-    ctx.fill();
-  })
-}
-
-// 【核心：Canvas 手绘各地标远景氛围】
-function drawLandmark(pid){
-  const w = canvas.width;
-  const h = canvas.height;
-  const horizon = h * 0.68;
-  ctx.save();
-  ctx.scale(scale,scale);
-  const fogAlpha = snowOn ? 0.35 : 0.75;
-
-  // 通用夜空渐变基底
-  const skyGrad = ctx.createLinearGradient(0,0,0,horizon+80);
-  skyGrad.addColorStop(0,'#040814');
-  skyGrad.addColorStop(1,'#0b1528');
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0,0,w,horizon+100);
-
-  ctx.globalAlpha = fogAlpha;
-
-  // 逐个地点轮廓绘制
-  if(pid==='altai'){
-    // 阿勒泰：远山 + 村落暖光 + 木栅栏
-    ctx.fillStyle='#121c2e';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon);
-    ctx.quadraticCurveTo(w*0.25,horizon-90,w*0.45,horizon-140);
-    ctx.quadraticCurveTo(w*0.7,horizon-100,w,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-    // 暖光点
-    for(let i=0;i<12;i++){
-      const lx = w*(0.15+i*0.07);
-      const ly = horizon + 15 + Math.sin(i*1.4)*12;
-      ctx.beginPath();
-      ctx.arc(lx,ly,1.8,0,Math.PI*2);
-      ctx.fillStyle='#ffd888';ctx.fill();
-    }
-  }else if(pid==='changbaishan'){
-    // 长白山 天池火山
-    ctx.fillStyle='#101a2c';
-    ctx.beginPath();
-    ctx.moveTo(w*0.2,horizon);
-    ctx.lineTo(w*0.38,horizon-160);
-    ctx.lineTo(w*0.62,horizon-160);
-    ctx.lineTo(w*0.8,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-    // 天池湖面
-    ctx.beginPath();
-    ctx.ellipse(w/2,horizon-45,w*0.13,24,0,0,Math.PI*2);
-    ctx.fillStyle='#163052';ctx.fill();
-  }else if(pid==='shangrila'){
-    // 香格里拉 藏式金顶寺庙+经幡
-    ctx.fillStyle='#11192b';
-    ctx.beginPath();
-    ctx.moveTo(w*0.35,horizon-110);
-    ctx.lineTo(w*0.5,horizon-180);
-    ctx.lineTo(w*0.65,horizon-110);
-    ctx.lineTo(w*0.72,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-    ctx.beginPath();
-    ctx.arc(w/2,horizon-170,9,0,Math.PI*2);
-    ctx.fillStyle='#ffdd77';ctx.fill();
-  }else if(pid==='niantanggula'){
-    // 念青唐古拉 高原湖湾冰川远山
-    ctx.fillStyle='#101b30';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon);
-    ctx.quadraticCurveTo(w*0.35,horizon-130,w*0.55,horizon-175);
-    ctx.quadraticCurveTo(w*0.8,horizon-115,w,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(w*0.3,horizon+10);
-    ctx.quadraticCurveTo(w*0.5,horizon-10,w*0.72,horizon+10);
-    ctx.fillStyle='#142b4c';ctx.fill();
-  }else if(pid==='hulunbuir'){
-    // 呼伦贝尔 草原+蒙古包
-    ctx.fillStyle='#0f1726';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon+10);
-    ctx.quadraticCurveTo(w*0.5,horizon-25,w,horizon+10);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-    // 蒙古包轮廓
-    ctx.beginPath();
-    ctx.arc(w*0.32,horizon+12,22,Math.PI,0);
-    ctx.lineTo(w*0.32-22,horizon+12);ctx.fill();
-    ctx.beginPath();
-    ctx.arc(w*0.68,horizon+14,18,Math.PI,0);
-    ctx.lineTo(w*0.68-18,horizon+14);ctx.fill();
-  }else if(pid==='tianshan'){
-    ctx.fillStyle='#101a2c';
-    ctx.beginPath();
-    ctx.moveTo(w*0.18,horizon);
-    ctx.lineTo(w*0.42,horizon-210);
-    ctx.lineTo(w*0.58,horizon-150);
-    ctx.lineTo(w*0.85,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='qilianshan'){
-    ctx.fillStyle='#131c2e';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon);
-    ctx.quadraticCurveTo(w*0.22,horizon-75,w*0.4,horizon-120);
-    ctx.quadraticCurveTo(w*0.65,horizon-85,w,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='gongga'){
-    ctx.fillStyle='#10192a';
-    ctx.beginPath();
-    ctx.moveTo(w*0.33,horizon);
-    ctx.lineTo(w*0.5,horizon-225);
-    ctx.lineTo(w*0.67,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='k2'){
-    ctx.fillStyle='#0f1828';
-    ctx.beginPath();
-    ctx.moveTo(w*0.38,horizon);
-    ctx.lineTo(w*0.5,horizon-240);
-    ctx.lineTo(w*0.62,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='meili'){
-    ctx.fillStyle='#111a2b';
-    ctx.beginPath();
-    ctx.moveTo(w*0.15,horizon);
-    ctx.lineTo(w*0.32,horizon-135);
-    ctx.lineTo(w*0.44,horizon-170);
-    ctx.lineTo(w*0.56,horizon-145);
-    ctx.lineTo(w*0.75,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='daocheng'){
-    ctx.fillStyle='#111a2b';
-    ctx.beginPath();
-    ctx.moveTo(w*0.28,horizon);
-    ctx.lineTo(w*0.38,horizon-155);
-    ctx.lineTo(w*0.5,horizon-190);
-    ctx.lineTo(w*0.63,horizon-140);
-    ctx.lineTo(w*0.74,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='helan'){
-    ctx.fillStyle='#121b2d';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon);
-    ctx.quadraticCurveTo(w*0.45,horizon-95,w,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='harbin'){
-    ctx.fillStyle='#121b2d';
-    ctx.beginPath();
-    ctx.moveTo(w*0.2,horizon);
-    ctx.lineTo(w*0.3,horizon-85);
-    ctx.lineTo(w*0.4,horizon);
-    ctx.quadraticCurveTo(w*0.65,horizon-65,w*0.8,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='lhasa'){
-    ctx.fillStyle='#10192a';
-    ctx.beginPath();
-    ctx.moveTo(w*0.35,horizon);
-    ctx.lineTo(w*0.5,horizon-130);
-    ctx.lineTo(w*0.65,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='fuji'){
-    ctx.fillStyle='#111a2b';
-    ctx.beginPath();
-    ctx.moveTo(w*0.3,horizon);
-    ctx.lineTo(w*0.5,horizon-190);
-    ctx.lineTo(w*0.7,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='matterhorn'){
-    ctx.fillStyle='#0f1726';
-    ctx.beginPath();
-    ctx.moveTo(w*0.38,horizon);
-    ctx.lineTo(w*0.5,horizon-220);
-    ctx.lineTo(w*0.62,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else if(pid==='tromso'){
-    ctx.fillStyle='#101a2c';
-    ctx.beginPath();
-    ctx.moveTo(w*0.36,horizon);
-    ctx.lineTo(w*0.5,horizon-110);
-    ctx.lineTo(w*0.64,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }else{
-    // 其余地点统一柔和远山兜底
-    ctx.fillStyle='#111a2b';
-    ctx.beginPath();
-    ctx.moveTo(0,horizon);
-    ctx.quadraticCurveTo(w*0.48,horizon-110,w,horizon);
-    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
-  }
-  ctx.restore();
-}
-
-// 渲染主循环
-function render(time){
-  ctx.fillStyle='#03060d';
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  drawStar(time);
-  drawLandmark(currentPlace);
-  drawSnow();
-  requestAnimationFrame(render);
-}
-
-// 滚轮缩放
-canvas.addEventListener('wheel',e=>{
-  e.preventDefault();
-  scale = Math.max(0.55,Math.min(2.2,scale - e.deltaY*0.0008));
-})
-
-// UI 地点列表渲染
-const panel = document.getElementById('placePanel');
-const btnPlace = document.getElementById('btnPlace');
-const snowBtn = document.getElementById('snowToggle');
-placeList.forEach(p=>{
-  const div = document.createElement('div');
-  div.className = 'place-item';
-  div.innerText = p.name;
-  div.dataset.id = p.id;
-  div.onclick = ()=>{
-    currentPlace = p.id;
-    document.querySelectorAll('.place-item').forEach(i=>i.classList.remove('active'));
-    div.classList.add('active');
-    panel.classList.remove('show');
-  }
-  panel.appendChild(div);
-})
-btnPlace.onclick = ()=>panel.classList.toggle('show');
-snowBtn.onclick = ()=>{
-  snowOn = !snowOn;
-  snowBtn.innerText = `下雪：${snowOn?'开启':'关闭'}`;
-}
-
-requestAnimationFrame(render);
 </script>
+
+<script id="app-engine">
+(function(){
+'use strict';
+
+var SNOW_CODES = [71,73,75,77,85,86];
+var SLEET_CODES = [66,67,68,79];
+var CACHE_KEY = 'snowday.v2.cache';
+var CACHE_MIN = 20;
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var mv = { order:[], cur:-1, demo:false, source:'' };
+
+function pad(n){ return n<10 ? '0'+n : ''+n; }
+function hhmm(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  return pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function within(iso, h){
+  if(!iso) return false;
+  var t = new Date(iso).getTime();
+  if(isNaN(t)) return false;
+  var now = Date.now();
+  return t-now <= h*3600e3 && t-now > -3600e3;
+}
+function getJSON(url, ms){
+  var ctl = new AbortController();
+  var timer = setTimeout(function(){ ctl.abort(); }, ms||9000);
+  return fetch(url, {signal:ctl.signal})
+    .then(function(r){ clearTimeout(timer); if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .catch(function(e){ clearTimeout(timer); throw e; });
+}
+function byId(id){ return document.getElementById(id); }
+
+/* ===== 状态判定 ===== */
+function classify(p){
+  if(mv.demo) return 'snow';
+  if(p.snowing) return 'snow';
+  if(p.sleet) return 'sleet';
+  if(within(p.next, 24)) return 'soon';
+  return 'none';
+}
+function stLabel(st){
+  if(st==='snow') return mv.demo ? '演示降雪' : '正在下雪';
+  if(st==='sleet') return '雨夹雪';
+  if(st==='soon') return '将下雪';
+  return '无雪';
+}
+
+/* ===== 数据源一：Open-Meteo（一次取全部坐标） ===== */
+function fromOpenMeteo(){
+  var lat = SCENES.map(function(s){ return s.lat; }).join(',');
+  var lon = SCENES.map(function(s){ return s.lon; }).join(',');
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
+            '&current=weather_code,temperature_2m,snowfall,wind_speed_10m'+
+            '&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC';
+  return getJSON(url, 10000).then(function(j){
+    var arr = Array.isArray(j) ? j : [j];
+    if(!arr.length) throw new Error('empty');
+    return { source:'Open-Meteo', places: arr.map(function(r, i){
+      var c = r.current || {};
+      var hr = r.hourly || {};
+      var times = hr.time || [], sf = hr.snowfall || [], hc = hr.weather_code || [];
+      var next = null, sum = 0, t0 = Date.now();
+      for(var k=0;k<times.length;k++){
+        var tt = new Date(times[k] + (times[k].length>16?'':'Z')).getTime();
+        if(tt-t0 < -3600e3) continue;
+        if(tt-t0 > 24*3600e3) break;
+        if(SNOW_CODES.indexOf(hc[k])>-1 || SLEET_CODES.indexOf(hc[k])>-1){
+          sum += (sf[k]||0);
+          if(!next) next = new Date(tt).toISOString();
+        }
+      }
+      return {
+        id: SCENES[i].id,
+        temp: (c.temperature_2m!=null ? Math.round(c.temperature_2m*10)/10 : null),
+        wind: (c.wind_speed_10m!=null ? Math.round(c.wind_speed_10m*10)/10 : null),
+        code: String(c.weather_code==null?'':c.weather_code),
+        snowing: SNOW_CODES.indexOf(c.weather_code)>-1,
+        sleet: SLEET_CODES.indexOf(c.weather_code)>-1,
+        next: next, mm: Math.round(sum*10)/10
+      };
+    })};
+  });
+}
+
+/* ===== 数据源二：MET Norway ===== */
+function fromMetNo(){
+  var out = [], fail = 0, list = SCENES.slice(), chain = Promise.resolve();
+  list.forEach(function(s){
+    chain = chain.then(function(){
+      return getJSON('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat='+s.lat+'&lon='+s.lon, 9000)
+        .then(function(d){
+          var ts = d.properties.timeseries;
+          var cur = ts[0].data;
+          var sym = (cur.next_1_hours && cur.next_1_hours.summary.symbol_code) || '';
+          var next = null, sum = 0, t0 = Date.now();
+          for(var k=0;k<ts.length && k<40;k++){
+            var n = ts[k].data.next_1_hours;
+            if(!n) continue;
+            var tt = new Date(ts[k].time).getTime();
+            if(tt-t0 < -3600e3) continue;
+            if(tt-t0 > 24*3600e3) break;
+            if(/snow/.test(n.summary.symbol_code)){
+              sum += n.details.precipitation_amount || 0;
+              if(!next) next = new Date(tt).toISOString();
+            }
+          }
+          out.push({
+            id: s.id,
+            temp: Math.round(cur.instant.details.air_temperature*10)/10,
+            wind: Math.round((cur.instant.details.wind_speed||0)*10)/10,
+            code: sym,
+            snowing: /snow/.test(sym) && !/sleet/.test(sym),
+            sleet: /sleet/.test(sym),
+            next: /snow/.test(sym) ? null : next,
+            mm: Math.round(sum*10)/10
+          });
+        })
+        .catch(function(){ fail++; })
+        .then(function(){ return new Promise(function(r){ setTimeout(r, 200); }); });
+    });
+  });
+  return chain.then(function(){
+    if(fail > list.length*0.4) throw new Error('met.no 多数请求失败');
+    out.sort(function(a,b){
+      return SCENES.findIndex(function(s){return s.id===a.id;}) - SCENES.findIndex(function(s){return s.id===b.id;});
+    });
+    return { source:'MET Norway', places: out };
+  });
+}
+
+function loadData(force){
+  var cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){}
+  if(!force && cached && Date.now()-cached.ts < CACHE_MIN*60e3 && cached.places && cached.places.length===SCENES.length){
+    apply(cached.places, cached.source); return;
+  }
+  setPill('warn', '正在获取降雪…');
+  fromOpenMeteo()
+    .catch(function(){ return fromMetNo(); })
+    .then(function(res){
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(), places:res.places, source:res.source})); }catch(e){}
+      apply(res.places, res.source);
+    })
+    .catch(function(){
+      apply(FALLBACK, '示例');
+    });
+}
+function apply(places, source){
+  mv.source = source;
+  mv.order = SCENES.map(function(s){
+    var p = null;
+    for(var k=0;k<places.length;k++){ if(places[k].id===s.id){ p = places[k]; break; } }
+    if(!p) p = {id:s.id, temp:null, next:null, mm:0};
+    return { scene:s, place:p, st: classify(p) };
+  });
+  buildSheet();
+  var best = pickDefault();
+  if(DEEP){
+    for(var d=0;d<mv.order.length;d++){
+      if(mv.order[d].scene.id === DEEP){ best = d; break; }
+    }
+  }
+  setPlace(best < 0 ? 0 : best, true);
+}
+
+function pickDefault(){
+  var iBest = -1, vBest = -1;
+  var seed = new Date().toISOString().slice(0,10);
+  mv.order.forEach(function(m, i){
+    var v = 0;
+    if(m.st==='snow') v = 1000 + (m.place.mm||0);
+    else if(m.st==='sleet') v = 900 + (m.place.mm||0);
+    else if(m.st==='soon') v = 500 - Math.min(400, Math.max(0, (new Date(m.place.next||0)-Date.now())/60e3));
+    v += (Math.abs(hash(seed + m.scene.id)) % 1000) / 1000;   /* 同分时每天换一个 */
+    if(v > vBest){ vBest = v; iBest = i; }
+  });
+  return iBest;
+}
+
+function hash(str){
+  var h = 0;
+  for(var i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return h;
+}
+
+/* ===== 场景切换 ===== */
+function setPlace(i, instant){
+  if(i<0 || i>=mv.order.length) return;
+  var m = mv.order[i];
+  mv.cur = i;
+  var st = m.st;
+  window.VS_PENDING = [m.scene.id, st, m.place.mm || 0];
+  if(window.VS3D) window.VS3D.show(m.scene.id, st, m.place.mm || 0);
+  byId('placeCn').textContent = m.scene.name;
+  byId('placeMeta').textContent = m.scene.region;
+  byId('place').classList.toggle('quiet', !(st==='snow' || st==='sleet'));
+  setPill((st==='snow' || st==='sleet') ? 'on' : 'off', m.scene.name);
+  fillWeather(m);
+  if(!mv.weather) byId('wxCard').classList.remove('open');
+}
+
+function setPill(kind, txt){
+  var d = byId('pillDot');
+  d.className = 'dot' + (kind==='on' ? '' : (kind==='warn' ? ' warn' : ' off'));
+  byId('pillTxt').textContent = txt;
+}
+
+/* ===== 天气 ===== */
+var COND = {
+  snow:'雪', sleet:'雨夹雪', none:'无降雪'
+};
+function fillWeather(m){
+  var p = m.place, st = m.st;
+  byId('wxPlace').textContent = m.scene.name;
+  byId('wxTemp').textContent = (p.temp!=null ? p.temp+'°' : '—');
+  byId('wxCond').textContent = st==='snow' ? (mv.demo?'演示':'正在下雪')
+    : st==='sleet' ? '雨夹雪'
+    : st==='soon' ? '将下雪'
+    : '无降雪';
+  var rows = [
+    ['风', p.wind!=null ? p.wind+' m/s' : '—'],
+    ['未来 24 小时降雪', p.mm ? p.mm+' cm' : '—'],
+    ['起雪时间', within(p.next,24) ? hhmm(p.next) : '—'],
+    ['状态', stLabel(st)]
+  ];
+  byId('wxRows').innerHTML = rows.map(function(r){
+    return '<div class="wr"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';
+  }).join('');
+}
+
+/* ===== 选择面板 ===== */
+function buildSheet(){
+  var snow = [], soon = [], none = [];
+  mv.order.forEach(function(m, i){
+    if(m.st==='snow' || m.st==='sleet') snow.push([m,i]);
+    else if(m.st==='soon') soon.push([m,i]);
+    else none.push([m,i]);
+  });
+  soon.sort(function(a,b){ return new Date(a[0].place.next||0) - new Date(b[0].place.next||0); });
+
+  function rows(list, dotCls){
+    return list.map(function(x){
+      var m = x[0], i = x[1];
+      var t = (m.place.temp!=null ? m.place.temp+'°' : '');
+      var extra = m.st==='soon' && within(m.place.next,24) ? hhmm(m.place.next) : (m.place.mm ? m.place.mm+'cm' : '');
+      return '<button class="row'+(i===mv.cur?' cur':'')+(m.st==='none'?' dim':'')+'" data-i="'+i+'">'+
+        '<span><span class="nm">'+m.scene.name+'</span><span class="rg">'+m.scene.region+'</span></span>'+
+        '<span class="rt">'+(extra?'<span>'+extra+'</span>':'')+'<span>'+t+'</span><span class="sd '+dotCls+'"></span></span>'+
+      '</button>';
+    }).join('');
+  }
+
+  var html = '';
+  if(snow.length) html += '<div class="grp">正在下雪 · '+snow.length+'</div>'+rows(snow,'');
+  if(soon.length) html += '<div class="grp">雪在路上 · '+soon.length+'</div>'+rows(soon,'soon');
+  if(none.length) html += '<div class="grp">暂无降雪 · '+none.length+'</div>'+rows(none,'none');
+
+  byId('sheetCount').textContent = mv.source ? (mv.source==='示例' ? '示例数据' : '已更新') : '';
+  byId('sheetBody').innerHTML = html;
+  byId('sheetFoot').innerHTML =
+    '<button class="demo-row" id="demoRow"><span>演示：所有地点下雪</span>'+
+    '<span class="toggle" role="switch" aria-checked="'+(mv.demo?'true':'false')+'" id="demoTog"></span></button>';
+
+  Array.prototype.forEach.call(byId('sheetBody').querySelectorAll('.row'), function(el){
+    el.addEventListener('click', function(){
+      setPlace(parseInt(el.getAttribute('data-i'),10), false);
+      closeSheet();
+    });
+  });
+  byId('demoRow').addEventListener('click', function(){
+    mv.demo = !mv.demo;
+    byId('demoTog').setAttribute('aria-checked', mv.demo ? 'true':'false');
+    mv.order = mv.order.map(function(m){ return { scene:m.scene, place:m.place, st: classify(m.place) }; });
+    buildSheet();
+    setPlace(mv.cur, false);
+  });
+}
+
+function openSheet(){
+  buildSheet();
+  byId('sheet').classList.add('open');
+  byId('mask').classList.add('open');
+  byId('pill').setAttribute('aria-expanded','true');
+}
+function closeSheet(){
+  byId('sheet').classList.remove('open');
+  byId('mask').classList.remove('open');
+  byId('pill').setAttribute('aria-expanded','false');
+}
+
+/* ===== 交互 ===== */
+byId('pill').addEventListener('click', function(){
+  var open = byId('sheet').classList.contains('open');
+  if(open) closeSheet(); else openSheet();
+});
+byId('mask').addEventListener('click', closeSheet);
+byId('wxBtn').addEventListener('click', function(){
+  mv.weather = !mv.weather;
+  byId('wxCard').classList.toggle('open', mv.weather);
+  byId('wxBtn').classList.toggle('on', mv.weather);
+  byId('wxBtn').setAttribute('aria-expanded', mv.weather ? 'true':'false');
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    if(byId('sheet').classList.contains('open')) closeSheet();
+    else if(mv.weather){
+      mv.weather = false;
+      byId('wxCard').classList.remove('open');
+      byId('wxBtn').classList.remove('on');
+    }
+    return;
+  }
+  if(byId('sheet').classList.contains('open')) return;
+  if(e.key==='ArrowRight') setPlace((mv.cur+1)%mv.order.length, false);
+  if(e.key==='ArrowLeft') setPlace((mv.cur-1+mv.order.length)%mv.order.length, false);
+});
+
+
+
+
+/* 演示：网址加 #demo；深链：网址加 #p=<id> 直接看某个地点 */
+var HS = location.hash.replace('#','').split('&');
+if(HS.indexOf('demo')>-1) mv.demo = true;
+var DEEP = '';
+HS.forEach(function(kv){ if(kv.indexOf('p=')===0) DEEP = kv.slice(2); });
+
+/* ===== 启动 ===== */
+setPlace(0, true);
+loadData(false);
+setInterval(function(){ loadData(true); }, CACHE_MIN*60e3);
+})();
+</script>
+
+
+<script type="importmap">{"imports":{"three":"https://fastly.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ================= 基础 ================= */
+const host = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.domElement.id = 'gl';
+host.insertBefore(renderer.domElement, host.firstChild);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x122339, 0.014);
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 600);
+
+/* ================= 天空 ================= */
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: {
+    cTop: { value: new THREE.Color(0x081321) },
+    cMid: { value: new THREE.Color(0x16304c) },
+    cBot: { value: new THREE.Color(0x2b4a68) }
+  },
+  vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: `
+    varying vec3 vP; uniform vec3 cTop; uniform vec3 cMid; uniform vec3 cBot;
+    void main(){
+      float h = clamp(vP.y, -0.1, 1.0);
+      vec3 c = mix(cBot, cMid, smoothstep(0.0, 0.34, h));
+      c = mix(c, cTop, smoothstep(0.34, 0.92, h));
+      gl_FragColor = vec4(c, 1.0);
+    }`
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(260, 32, 20), skyMat);
+scene.add(sky);
+
+/* ================= 光 ================= */
+scene.add(new THREE.HemisphereLight(0x39566f, 0x0a141f, 0.18));
+const fill = new THREE.DirectionalLight(0x9dbfdd, 0.55);
+fill.position.set(12, 10, 24);
+scene.add(fill);
+const moon = new THREE.DirectionalLight(0xc2daf6, 1.45);
+moon.position.set(-38, 22, -10);
+scene.add(moon);
+
+/* ================= 雪 / 星 纹理 ================= */
+const softTex = (() => {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 96;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(16, 48, 0, 16, 48, 16);
+  gr.addColorStop(0, 'rgba(255,255,255,.95)');
+  gr.addColorStop(.55, 'rgba(255,255,255,.5)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.save(); g.translate(16, 48); g.scale(.72, 2.6); g.translate(-16, -48);
+  g.fillStyle = gr; g.beginPath(); g.arc(16, 48, 16, 0, 6.2832); g.fill(); g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const dotTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(.4, 'rgba(255,255,255,.55)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); return t;
+})();
+
+/* ================= 雪 ================= */
+const snowLayers = [];
+function makeSnow(count, size, alpha, spread, height) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3), seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3] = (Math.random() - .5) * spread;
+    pos[i * 3 + 1] = Math.random() * height;
+    pos[i * 3 + 2] = (Math.random() - .5) * spread;
+    seed[i] = Math.random() * 100;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  const mat = new THREE.PointsMaterial({
+    size, map: softTex, color: 0xdaebff, transparent: true, opacity: alpha, depthWrite: false,
+    blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: true
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  scene.add(pts);
+  const l = { pts, count, spread, height, speed: 0, seed, baseSpeed: 0, baseAlpha: alpha };
+  snowLayers.push(l);
+  return l;
+}
+const snowFar = makeSnow(5200, 0.42, 0.34, 160, 80);
+const snowMid = makeSnow(3200, 0.8, 0.42, 120, 62);
+const snowNear = makeSnow(600, 1.5, 0.36, 95, 46);
+snowFar.speed = 1.5; snowMid.speed = 2.6; snowNear.speed = 4.0;
+snowLayers.forEach(l => l.baseSpeed = l.speed);
+
+/* ================= 星空（只在上坡视角出现） ================= */
+const STAR_N = 5200;
+const starGeo = new THREE.BufferGeometry();
+{
+  const pos = new Float32Array(STAR_N * 3), size = new Float32Array(STAR_N),
+    seed = new Float32Array(STAR_N), amp = new Float32Array(STAR_N);
+  for (let i = 0; i < STAR_N; i++) {
+    const u = Math.random() * Math.PI * 2;
+    const phi = Math.pow(Math.random(), .7) * 1.42 + 0.05;
+    const r = 240;
+    pos[i * 3] = Math.cos(u) * Math.cos(phi) * r;
+    pos[i * 3 + 1] = Math.sin(phi) * r;
+    pos[i * 3 + 2] = Math.sin(u) * Math.cos(phi) * r;
+    size[i] = Math.random() < .07 ? 3.0 + Math.random() * 2.0 : 1.0 + Math.random() * 1.3;
+    seed[i] = Math.random() * 100;
+    amp[i] = Math.random() < .3 ? 1.0 : 0.15;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starGeo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  starGeo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  starGeo.setAttribute('aAmp', new THREE.BufferAttribute(amp, 1));
+}
+const starMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uMap: { value: dotTex }, uFade: { value: 0 } },
+  vertexShader: `
+    attribute float aSize; attribute float aSeed; attribute float aAmp;
+    varying float vB; uniform float uTime;
+    void main(){
+      float t = uTime * 0.8 + aSeed * 6.2831;
+      float burst = pow(max(0.0, sin(t)), 16.0);
+      vB = (0.5 + 1.1 * burst * aAmp) * (0.7 + 0.3 * fract(aSeed * 5.13));
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      gl_PointSize = aSize * (300.0 / -mv.z) * 3.2;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    varying float vB; uniform sampler2D uMap; uniform float uFade;
+    void main(){
+      vec4 t = texture2D(uMap, gl_PointCoord);
+      gl_FragColor = vec4(vec3(0.88, 0.94, 1.0), t.a * vB * uFade);
+    }`
+});
+const stars = new THREE.Points(starGeo, starMat);
+stars.frustumCulled = false;
+scene.add(stars);
+
+/* ================= 材质 ================= */
+const MAT = {
+  snow: new THREE.MeshStandardMaterial({ color: 0x8fa7c1, roughness: .92, metalness: 0 }),
+  snowBright: new THREE.MeshStandardMaterial({ color: 0xdbe8f6, roughness: .85 }),
+  needle: new THREE.MeshStandardMaterial({ color: 0x0f1c26, roughness: .95, flatShading: true }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x24190f, roughness: .9 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x080e15, roughness: .95 }),
+  roofSnow: new THREE.MeshStandardMaterial({ color: 0xcadcec, roughness: .9 }),
+  warm: new THREE.MeshStandardMaterial({ color: 0x201208, emissive: 0xffb066, emissiveIntensity: 1.6 }),
+  wall: new THREE.MeshStandardMaterial({ color: 0x1b2532, roughness: .9 })
+};
+
+function box(w, h, d, mat, x, y, z, ry) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z); if (ry) m.rotation.y = ry; return m;
+}
+function cyl(rt, rb, h, seg, mat, x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+  m.position.set(x, y, z); return m;
+}
+function coneG(r, h, seg, mat) { return new THREE.Mesh(new THREE.ConeGeometry(r, h, seg), mat); }
+
+/* 覆雪云杉：一层层锥体 + 每层落雪，比单薄的三层锥更像真树 */
+function jaggedCone(r, hh, seg) {
+  const geo = new THREE.ConeGeometry(r, hh, seg, 3);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i);
+    if (y > -hh * 0.49) {
+      const k = 1 + (Math.random() - 0.5) * 0.22;
+      pos.setX(i, pos.getX(i) * k);
+      pos.setZ(i, pos.getZ(i) * k);
+    }
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, MAT.needle);
+}
+
+function spruce(h, x, z, tilt) {
+  const g = new THREE.Group();
+  const trunkH = h * 0.25;
+  g.add(cyl(h * 0.03, h * 0.055, trunkH, 6, MAT.wood, 0, trunkH / 2, 0));
+  const layers = [[h * 0.30, h * 0.26, 0.0], [h * 0.23, h * 0.26, 0.24], [h * 0.15, h * 0.30, 0.48]];
+  for (const [r, hh, lift] of layers) {
+    const y = trunkH + h * lift;
+    const c = jaggedCone(r, hh, 11);
+    c.position.set(0, y + hh * 0.5, 0);
+    c.rotation.y = Math.random() * 3;
+    g.add(c);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, hh * 0.42, 11), MAT.snowBright);
+    cap.position.set(0, y + hh * 0.86, 0);
+    g.add(cap);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = Math.random() * 6.28;
+  if (tilt) g.rotation.z = (Math.random() - .5) * 0.05;
+  g.scale.setScalar(0.94 + Math.random() * 0.22);
+  return g;
+}
+
+/* 暖光路灯：木杆 + 吊灯 + 光斑 + 地面光池 */
+function lamp(g, x, z, h) {
+  const grp = new THREE.Group();
+  grp.add(cyl(0.10, 0.14, h, 7, MAT.wood, 0, h / 2, 0));
+  grp.add(box(1.5, 0.12, 0.12, MAT.wood, 0.55, h - 0.15, 0));
+  grp.add(box(0.16, 0.16, 0.16, MAT.dark, 1.15, h - 0.28, 0));
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.34, 10, 1, true), MAT.wood);
+  shade.position.set(1.15, h - 0.5, 0);
+  shade.rotation.x = Math.PI;
+  grp.add(shade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), MAT.warm);
+  bulb.position.set(1.15, h - 0.62, 0);
+  grp.add(bulb);
+
+  const light = new THREE.PointLight(0xffb877, 60, 34, 2);
+  light.position.set(1.15, h - 0.7, 0);
+  grp.add(light);
+
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: dotTex, color: 0xffc08a, transparent: true, opacity: .6,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  glow.position.set(1.15, h - 0.6, 0);
+  glow.scale.setScalar(1.6);
+  grp.add(glow);
+
+  /* 地面光池 */
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(16, 16),
+    new THREE.MeshBasicMaterial({ map: dotTex, color: 0xffb877, transparent: true, opacity: .22, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(1.15, 0.06, 0);
+  grp.add(pool);
+
+  grp.position.set(x, 0, z);
+  g.add(grp);
+}
+
+/* 木栅栏 */
+function fence(g, x0, z0, len, dirX) {
+  const grp = new THREE.Group();
+  const n = Math.round(len / 1.6);
+  for (let i = 0; i <= n; i++) {
+    const px = dirX ? x0 + i * (len / n) : x0;
+    const pz = dirX ? z0 : z0 + i * (len / n);
+    const hh = 1.25 + Math.random() * 0.15;
+    grp.add(box(0.14, hh, 0.14, MAT.wood, px, hh / 2, pz));
+    grp.add(box(0.34, 0.10, 0.34, MAT.snowBright, px, hh + 0.03, pz));
+    if (i < n) {
+      const sx = dirX ? (len / n) : 0, sz = dirX ? 0 : (len / n);
+      const mid = dirX ? px + sx / 2 : pz + sz / 2;
+      grp.add(box(dirX ? sx : 0.08, 0.09, dirX ? 0.08 : sz, MAT.wood, dirX ? mid : px, hh * 0.72, dirX ? pz : mid));
+      grp.add(box(dirX ? sx : 0.10, 0.10, dirX ? 0.10 : sz, MAT.wood, dirX ? mid : px, hh * 0.42, dirX ? pz : mid));
+    }
+  }
+  g.add(grp);
+}
+
+/* 远处木屋剪影（带暖窗） */
+function cottage(g, x, z, s, ry) {
+  const grp = new THREE.Group();
+  grp.add(box(6 * s, 2.6 * s, 4.2 * s, MAT.wall, 0, 1.3 * s, 0));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(4.6 * s, 1.9 * s, 4), MAT.roofSnow);
+  roof.rotation.y = Math.PI / 4;
+  roof.scale.set(1, 1, 0.72);
+  roof.position.set(0, 3.1 * s, 0);
+  grp.add(roof);
+  grp.add(box(0.75 * s, 0.95 * s, 0.05, MAT.warm, -1.2 * s, 1.35 * s, 2.1 * s));
+  grp.add(box(0.75 * s, 0.95 * s, 0.05, MAT.warm, 1.2 * s, 1.35 * s, 2.1 * s));
+  grp.position.set(x, 0, z);
+  grp.rotation.y = ry || 0;
+  g.add(grp);
+}
+
+/* ================= 地形 ================= */
+function ground(cfg) {
+  const size = 420, seg = 170;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const base = new THREE.Color(0x24313f), bright = new THREE.Color(0xeef5fd), c = new THREE.Color();
+  const ridges = cfg.ridges || [];
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let h = (Math.sin(x * .11 + cfg.seed) * .5 + Math.cos(z * .13 - cfg.seed) * .5) * .55;
+    h += Math.sin(x * .31 + z * .21) * .18 + Math.sin(x * 1.4) * .05 + Math.cos(z * 1.7) * .05;
+    for (const r of ridges) {
+      const d = Math.sqrt((x - r.x) ** 2 + (z - r.z) ** 2) / r.r;
+      if (d < 1) {
+        const shape = Math.pow(1 - d, r.sharp || 1.3);
+        const crag = 1 + Math.sin(Math.atan2(z - r.z, x - r.x) * 6) * 0.06 * shape
+          + Math.sin(x * 0.09 + z * 0.07) * 0.05 * shape;
+        h += r.h * shape * crag;
+      }
+    }
+    if (cfg.street) {
+      const ax = Math.abs(x);
+      if (ax < 6.5) h = 0;
+      else if (ax < 11) h *= (ax - 6.5) / 4.5;
+    }
+    const rr = Math.sqrt(x * x + (z - 4) * (z - 4));
+    if (rr > 48) h -= (rr - 48) * 0.22;
+    pos.setY(i, h);
+    const t = Math.min(1, Math.max(0, (h - 3) / 12));
+    c.copy(base).lerp(bright, 0.22 + 0.78 * Math.pow(t, 1.25));
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, metalness: 0, emissive: 0x101c2a, emissiveIntensity: 1 }));
+  return mesh;
+}
+
+/* 雪路：略深的一条，带两道车辙 */
+function road(g, cfg) {
+  const len = 120;
+  const grp = new THREE.Group();
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(10.5, len), new THREE.MeshStandardMaterial({ color: 0x869db4, roughness: .8 }));
+  surf.rotation.x = -Math.PI / 2;
+  surf.position.set(0, 0.02, -len / 2 + 8);
+  grp.add(surf);
+  for (const off of [-2.2, 2.2]) {
+    const t = new THREE.Mesh(new THREE.PlaneGeometry(0.55, len), new THREE.MeshStandardMaterial({ color: 0x6c8296, roughness: .7 }));
+    t.rotation.x = -Math.PI / 2;
+    t.position.set(off, 0.035, -len / 2 + 8);
+    grp.add(t);
+  }
+  /* 路肩雪堆 */
+  const rnd = mulberry(cfg.seed + 5);
+  for (let i = 0; i < 22; i++) {
+    const side = i % 2 ? 1 : -1;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.45 + rnd() * 0.55, 8, 6), MAT.snow);
+    m.scale.set(2.6, 0.32, 1.4);
+    m.position.set(side * (6.0 + rnd() * 1.6), 0.02, -50 + i * 5.6 + rnd());
+    grp.add(m);
+  }
+  g.add(grp);
+}
+
+function mulberry(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ================= 场景配置 ================= */
+const M = 'mountain', S = 'street';
+const CFG = {
+  fuji: { kind: M, seed: 3, ridges: [{ x: 0, z: -132, h: 60, r: 44, sharp: 1.4 }, { x: -46, z: -100, h: 22, r: 34, sharp: 1.35 }, { x: 42, z: -102, h: 18, r: 32, sharp: 1.35 }] },
+  matterhorn: { kind: M, seed: 9, ridges: [{ x: 4, z: -96, h: 54, r: 44, sharp: 1.75 }, { x: -22, z: -50, h: 16, r: 26, sharp: 1.6 }] },
+  changbai: { kind: M, seed: 5, ridges: [{ x: 0, z: -100, h: 44, r: 60, sharp: 1.35 }, { x: -40, z: -56, h: 10, r: 22, sharp: 1.4 }] },
+  tianshan: { kind: M, seed: 12, ridges: [{ x: -26, z: -106, h: 50, r: 48, sharp: 1.45 }, { x: 18, z: -108, h: 54, r: 50, sharp: 1.5 }] },
+  jungfrau: { kind: M, seed: 21, ridges: [{ x: -14, z: -104, h: 50, r: 48, sharp: 1.45 }, { x: 22, z: -106, h: 54, r: 50, sharp: 1.5 }] },
+  whistler: { kind: M, seed: 31, ridges: [{ x: -18, z: -102, h: 46, r: 46, sharp: 1.4 }, { x: 20, z: -104, h: 50, r: 48, sharp: 1.45 }] },
+  potala: { kind: M, seed: 47, ridges: [{ x: -30, z: -108, h: 24, r: 32, sharp: 1.4 }, { x: 26, z: -68, h: 22, r: 30, sharp: 1.4 }], street: true },
+  rovaniemi: { kind: S, seed: 17, street: true, cottage: true },
+  newyork: { kind: S, seed: 23, city: true, street: true },
+  corner: { kind: S, seed: 41, street: true, cottage: true },
+  gwanghwamun: { kind: S, seed: 43, street: true, gate: true },
+  sophia: { kind: S, seed: 53, street: true, domes: true },
+  stbasil: { kind: S, seed: 59, street: true, domes: true },
+  sapporo: { kind: S, seed: 61, street: true, city: true }
+};
+
+/* ================= 公交站台 ================= */
+const stopRef = {};
+const busRef = { grp: null, wheels: [], t: 1, from: 0, to: 0, dur: 4.2 };
+const accRef = { v: 0, mat: null, cover: null, drifts: [] };
+let snowStrength = 0;
+
+function groundCity() {
+  const size = 420, seg = 150;
+  const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const base = new THREE.Color(0x1e2a37), bright = new THREE.Color(0xdde9f6), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let h = (Math.sin(x * .09) * .5 + Math.cos(z * .11) * .5) * .46;
+    h += Math.sin(x * .3 + z * .21) * .1;
+    const dz = Math.abs(z + 18);
+    let flat = 0;
+    if (z > -36) flat = 1;
+    else if (z > -46) flat = (z + 46) / 10;
+    h *= (1 - flat);
+    if (dz < 9) h = 0;
+    else if (dz < 14) h *= (dz - 9) / 5;
+    const rr = Math.sqrt(x * x + (z + 18) * (z + 18));
+    if (rr > 62) h -= (rr - 62) * .16;
+    pos.setY(i, h);
+    const t = Math.min(1, Math.max(0, (h - .8) / 7));
+    c.copy(base).lerp(bright, .15 + .6 * Math.pow(t, 1.3));
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: .95, metalness: 0, emissive: 0x0c1622, emissiveIntensity: 1
+  }));
+}
+
+function crossRoad(g) {
+  const grp = new THREE.Group();
+  const asphalt = new THREE.Mesh(new THREE.PlaneGeometry(170, 10.6),
+    new THREE.MeshStandardMaterial({ color: 0x677e93, roughness: .82 }));
+  asphalt.rotation.x = -Math.PI / 2;
+  asphalt.position.set(0, .02, -18);
+  grp.add(asphalt);
+
+  for (const zz of [-2.6, 2.6]) {
+    const tr = new THREE.Mesh(new THREE.PlaneGeometry(170, .52),
+      new THREE.MeshStandardMaterial({ color: 0x55708a, roughness: .7 }));
+    tr.rotation.x = -Math.PI / 2;
+    tr.position.set(0, .035, -18 + zz);
+    grp.add(tr);
+  }
+  for (const zz of [-5.2, 5.2]) {
+    const ln = new THREE.Mesh(new THREE.PlaneGeometry(170, .16),
+      new THREE.MeshStandardMaterial({ color: 0xb8cde0, roughness: .8 }));
+    ln.rotation.x = -Math.PI / 2;
+    ln.position.set(0, .03, -18 + zz);
+    grp.add(ln);
+  }
+
+  const rnd = mulberry(41);
+  for (let i = 0; i < 30; i++) {
+    const side = i % 2 ? 1 : -1;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.4 + rnd() * .5, 8, 6), MAT.snow);
+    m.scale.set(2.6, .3, 1.4);
+    m.position.set(-36 + rnd() * 72, .05, -18 + side * (5.7 + rnd() * 1.5));
+    grp.add(m);
+  }
+  g.add(grp);
+}
+
+function buildStop(g) {
+  const px = -1.1, pz = -25.4;
+  const grp = new THREE.Group();
+
+  grp.add(box(8.0, .18, 3.6, MAT.wall, px, .09, pz));
+  grp.add(box(8.0, .07, 3.6, MAT.roofSnow, px, .21, pz));
+
+  for (const dx of [-3.4, -1.15, 1.15, 3.4]) {
+    grp.add(cyl(.05, .06, 2.5, 8, MAT.dark, px + dx, 1.25, pz - 1.5));
+  }
+  for (const dx of [-3.4, 3.4]) {
+    for (const dz of [-1.5, 1.5]) {
+      grp.add(cyl(.055, .065, 2.5, 8, MAT.dark, px + dx, 1.25, pz + dz));
+    }
+  }
+
+  const glass = new THREE.MeshStandardMaterial({
+    color: 0x8fb7d6, roughness: .22, metalness: .05, transparent: true,
+    opacity: .2, depthWrite: false, side: THREE.DoubleSide
+  });
+  grp.add(box(7.6, 2.1, .05, glass, px, 1.3, pz - 1.52));
+  grp.add(box(.05, 2.1, 3.0, glass, px - 3.4, 1.3, pz));
+
+  const roof = box(8.2, .12, 3.4, MAT.dark, px, 2.58, pz);
+  roof.rotation.z = .015;
+  grp.add(roof);
+  grp.add(box(8.2, .07, 3.4, MAT.roofSnow, px, 2.66, pz));
+
+  grp.add(box(4.2, .1, .7, MAT.wood, px - .4, .88, pz + .3));
+  for (const dx of [-1.8, 1.8]) grp.add(box(.12, .78, .12, MAT.dark, px - .4 + dx, .4, pz + .3));
+  grp.add(box(4.2, .07, .7, MAT.roofSnow, px - .4, .94, pz + .3));
+
+  const signMat = new THREE.MeshStandardMaterial({ color: 0x1e150a, emissive: 0xffd39a, emissiveIntensity: 1.1 });
+  grp.add(box(1.0, 1.6, .14, signMat, px - 3.4, 1.5, pz - .85));
+  grp.add(box(1.16, .08, .2, MAT.dark, px - 3.4, 2.34, pz - .85));
+
+  const barMat = new THREE.MeshStandardMaterial({ color: 0x241a10, emissive: 0xffd9a4, emissiveIntensity: 1.0 });
+  grp.add(box(4.6, .07, .18, barMat, px, 2.46, pz + .1));
+
+  const lampLight = new THREE.PointLight(0xffcf9c, 34, 34, 2);
+  lampLight.position.set(px, 2.3, pz + .2);
+  grp.add(lampLight);
+
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: dotTex, color: 0xffcda2, transparent: true, opacity: .5,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  glow.position.set(px, 2.36, pz + .1);
+  glow.scale.setScalar(1.9);
+  grp.add(glow);
+
+  const signGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: dotTex, color: 0xffd9a4, transparent: true, opacity: .38,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  signGlow.position.set(px - 3.4, 1.5, pz - .7);
+  signGlow.scale.setScalar(2.4);
+  grp.add(signGlow);
+
+  const pool = new THREE.Mesh(new THREE.PlaneGeometry(18, 14),
+    new THREE.MeshBasicMaterial({ map: dotTex, color: 0xffc79a, transparent: true, opacity: .16, depthWrite: false, blending: THREE.AdditiveBlending }));
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.set(px, .25, pz + .6);
+  grp.add(pool);
+
+  g.add(grp);
+  stopRef.signMat = signMat;
+  stopRef.barMat = barMat;
+  stopRef.lamp = lampLight;
+  stopRef.glow = glow;
+  stopRef.signGlow = signGlow;
+  stopRef.pool = pool;
+}
+
+function buildAcc(g) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xdcebfa, roughness: .95, transparent: true,
+    opacity: .55 * accRef.v, depthWrite: false
+  });
+  const cover = new THREE.Mesh(new THREE.PlaneGeometry(96, 96), mat);
+  cover.rotation.x = -Math.PI / 2;
+  cover.position.set(0, .06 + .012 * accRef.v, -18);
+  cover.renderOrder = 3;
+  g.add(cover);
+  accRef.cover = cover;
+  accRef.mat = mat;
+
+  accRef.drifts = [];
+  const rnd = mulberry(211);
+  for (let i = 0; i < 10; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.34 + rnd() * .3, 10, 8), MAT.snow);
+    m.scale.set(1.5, .14 + .32 * accRef.v, 1.0);
+    m.position.set(-22 + rnd() * 44, .05, -13.0 - rnd() * 1.4);
+    g.add(m);
+    accRef.drifts.push(m);
+  }
+}
+
+function buildBus(g) {
+  const L = 6.8, W = 1.82, HB = W / 2;
+  const grp = new THREE.Group();
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x66849f, roughness: .5, metalness: .32 });
+  const lowerMat = new THREE.MeshStandardMaterial({ color: 0x1e2d3b, roughness: .7, metalness: .25 });
+  const bandMat = new THREE.MeshStandardMaterial({ color: 0xa6c8de, roughness: .45, metalness: .25 });
+  const glassCool = new THREE.MeshStandardMaterial({ color: 0x0a141d, emissive: 0x3c6688, emissiveIntensity: .62, roughness: .16, metalness: .55 });
+  const glassWarm = new THREE.MeshStandardMaterial({ color: 0x241a12, emissive: 0xffc286, emissiveIntensity: .6, roughness: .18, metalness: .4 });
+
+  grp.add(box(L, .62, W, lowerMat, 0, .66, 0));
+  grp.add(box(L, .95, W, bodyMat, 0, 1.45, 0));
+  grp.add(box(L - .12, .3, W - .04, bodyMat, 0, 2.02, 0));
+  grp.add(box(L - .12, .1, W - .1, bodyMat, 0, 2.19, 0));
+  grp.add(box(L - .55, .07, W - .26, MAT.roofSnow, 0, 2.31, 0));
+  grp.add(box(L - .06, .14, W + .02, bandMat, 0, .99, 0));
+  grp.add(box(L - .04, .03, W + .02, new THREE.MeshStandardMaterial({ color: 0x8ea9c1, emissive: 0x6f93b5, emissiveIntensity: .35 }), 0, 2.12, 0));
+  grp.add(box(L + .06, .12, W + .06, MAT.dark, 0, .36, 0));
+
+  const wg = new THREE.CylinderGeometry(.42, .42, .28, 16);
+  wg.rotateX(Math.PI / 2);
+  const wm = new THREE.MeshStandardMaterial({ color: 0x090d12, roughness: .92 });
+  const hubMat = new THREE.MeshStandardMaterial({ color: 0x3d4a57, roughness: .8, metalness: .4 });
+  const wheels = [];
+  for (const x of [-L / 2 + 1.05, L / 2 - 1.05]) {
+    for (const z of [-HB - .02, HB + .02]) {
+      const w = new THREE.Mesh(wg, wm);
+      w.position.set(x, .43, z);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, .3, 12), hubMat);
+      hub.rotation.x = Math.PI / 2;
+      hub.position.set(0, 0, 0);
+      w.add(hub);
+      grp.add(w);
+      wheels.push(w);
+    }
+  }
+
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xfff4e0, emissive: 0xfff2d6, emissiveIntensity: 2.2 });
+  for (const z of [-.55, .55]) grp.add(box(.06, .2, .38, headMat, -L / 2 - .03, .82, z));
+  const tailMat = new THREE.MeshStandardMaterial({ color: 0x4a0d08, emissive: 0xff3320, emissiveIntensity: 1.7 });
+  for (const z of [-.6, .6]) grp.add(box(.06, .22, .3, tailMat, L / 2 + .03, .95, z));
+
+  const frontLight = new THREE.PointLight(0xfff1d2, 24, 22, 2);
+  frontLight.position.set(-L / 2 - .3, .8, 0);
+  grp.add(frontLight);
+
+  const frontGlass = new THREE.MeshStandardMaterial({ color: 0x101f2b, emissive: 0x1e3444, emissiveIntensity: .2, roughness: .5, metalness: .05 });
+  grp.add(box(.06, .58, W - .26, frontGlass, -L / 2 + .03, 1.5, 0));
+  grp.add(box(.04, .62, .16, MAT.dark, -L / 2 + .03, 1.5, -HB + .12));
+  grp.add(box(.04, .62, .16, MAT.dark, -L / 2 + .03, 1.5, HB - .12));
+
+  const slots = 5;
+  const segW = (L - 1.3) / slots;
+  for (let i = 0; i < slots; i++) {
+    const x = -L / 2 + .8 + segW * (i + .5);
+    const m = i < 2 ? glassWarm : glassCool;
+    for (const z of [-HB - .006, HB + .006]) {
+      grp.add(box(segW - .14, .56, .03, m, x, 1.58, z));
+      grp.add(box(.07, .56, .035, MAT.dark, x - segW / 2 + .02, 1.58, z));
+    }
+  }
+
+  const routeMat = new THREE.MeshStandardMaterial({ color: 0x221f0e, emissive: 0xffcf7a, emissiveIntensity: 1.0 });
+  grp.add(box(1.0, .14, .04, routeMat, -L / 2 + .62, 1.94, HB + .006));
+  grp.add(box(1.0, .14, .04, routeMat, -L / 2 + .62, 1.94, -HB - .006));
+
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x101d29, emissive: 0x28506e, emissiveIntensity: .38, roughness: .22, metalness: .45 });
+  grp.add(box(.86, 1.1, .03, doorMat, -1.15, 1.3, -HB - .012));
+  grp.add(box(.86, 1.1, .03, doorMat, 1.0, 1.3, -HB - .012));
+  grp.add(box(.03, 1.1, .03, MAT.dark, -1.15, 1.3, -HB - .018));
+  grp.add(box(.03, 1.1, .03, MAT.dark, 1.0, 1.3, -HB - .018));
+
+  grp.add(box(1.1, .16, .7, MAT.dark, L / 2 - 1.1, 2.1, 0));
+
+  for (const z of [-1, 1]) {
+    grp.add(box(.1, .05, .26, MAT.dark, -L / 2 + .2, 1.82, z * (HB + .16)));
+    grp.add(box(.07, .24, .04, glassCool, -L / 2 + .2, 1.72, z * (HB + .3)));
+  }
+
+  g.add(grp);
+  busRef.grp = grp;
+  busRef.wheels = wheels;
+  busRef.from = 14.4;
+  busRef.to = 2.1;
+  busRef.t = 0;
+  busRef.dur = 4.4;
+  grp.position.set(busRef.from, 0, -20);
+}
+
+/* ================= 相机 ================= */
+const cam = { az: 0.06, pitch: 0.10, look: 0, dist: 21, target: new THREE.Vector3(0, 2.4, -8), auto: 0.014, drag: false };
+let lastX = 0, lastY = 0;
+
+function applyCam() {
+  const cp = Math.cos(cam.pitch);
+  camera.position.set(
+    Math.sin(cam.az) * cp * cam.dist,
+    cam.target.y + Math.sin(cam.pitch) * cam.dist,
+    cam.target.z + Math.cos(cam.az) * cp * cam.dist
+  );
+  const look = cam.target.clone();
+  look.y += Math.tan(cam.look) * cam.dist;
+  camera.lookAt(look);
+}
+
+function bindDrag() {
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', e => {
+    cam.drag = true; lastX = e.clientX; lastY = e.clientY;
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', e => {
+    if (!cam.drag) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    cam.az -= dx * 0.005;
+    cam.look = Math.min(0.34, Math.max(-0.22, cam.look + dy * 0.0032));
+    applyCam();
+  });
+  el.addEventListener('pointerup', () => cam.drag = false);
+  el.addEventListener('pointercancel', () => cam.drag = false);
+}
+
+/* ================= 组装 ================= */
+let curGroup = null;
+
+function compose(id) {
+  if (curGroup) { scene.remove(curGroup); curGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  const rnd = mulberry(137);
+  const g = new THREE.Group();
+  g.add(groundCity());
+  crossRoad(g);
+
+  for (let i = 0; i < 16; i++) {
+    const side = i % 2 ? 1 : -1;
+    g.add(spruce(3.2 + rnd() * 4.6, side * (11 + rnd() * 17), -6 - rnd() * 44, true));
+  }
+  for (let i = 0; i < 12; i++) {
+    g.add(spruce(2.6 + rnd() * 3.2, -48 + rnd() * 96, -62 - rnd() * 26, false));
+  }
+  for (let i = 0; i < 14; i++) {
+    const w = 4 + rnd() * 6, h = 8 + rnd() * 20;
+    g.add(box(w, h, w * 0.8, MAT.dark, (rnd() - .5) * 78, h / 2, -72 - rnd() * 26));
+  }
+
+  lamp(g, -9.5, -12.5, 4.6);
+  lamp(g, 7.4, -13.5, 5.2);
+  fence(g, -26, -9.5, 16, true);
+
+  buildStop(g);
+  buildAcc(g);
+  buildBus(g);
+
+  scene.add(g);
+  curGroup = g;
+
+  cam.target.set(.4, 1.85, -21.5);
+  cam.dist = 30;
+  cam.pitch = 0.05;
+  cam.az = -0.22;
+  applyCam();
+}
+
+/* ================= 状态 ================= */
+function setWeather(state, mm) {
+  snowStrength = state === 'snow' ? Math.min(1, .5 + (mm || 0) * .12)
+    : state === 'sleet' ? .34 : 0;
+  snowLayers.forEach(l => {
+    l.pts.visible = snowStrength > 0;
+    l.pts.geometry.setDrawRange(0, Math.max(0, Math.round(l.count * snowStrength)));
+    l.speed = l.baseSpeed * (.7 + snowStrength * .6);
+    l.pts.material.opacity = l.baseAlpha * (.6 + snowStrength * .5);
+  });
+  stars.visible = true;
+  scene.fog.density = snowStrength > 0 ? 0.015 : 0.012;
+  moon.intensity = snowStrength > 0 ? 1.0 : 1.25;
+}
+
+/* ================= 主循环 ================= */
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t = now / 1000;
+  starMat.uniforms.uTime.value = t;
+
+  /* 星空：只有抬头才看得到 */
+  const want = starMat.uniforms.uFade.value;
+  const starTarget = (!snowLayers[0].pts.visible && cam.look > 0.09) ? 1 : 0;
+  starMat.uniforms.uFade.value = want + (starTarget - want) * Math.min(1, dt * 4);
+
+  if (!cam.drag) { cam.az += cam.auto * dt; applyCam(); }
+
+  for (const l of snowLayers) {
+    if (!l.pts.visible) continue;
+    const arr = l.pts.geometry.attributes.position.array;
+    const half = l.spread / 2;
+    for (let i = 0; i < l.count; i++) {
+      const o = i * 3;
+      arr[o + 1] -= l.speed * dt;
+      arr[o] += Math.sin(t * .6 + l.seed[i]) * .20 * dt * 3 + .30 * dt;
+      arr[o + 2] += Math.cos(t * .45 + l.seed[i] * 1.3) * .12 * dt * 3;
+      if (arr[o + 1] < -1) { arr[o + 1] = l.height; arr[o] = (Math.random() - .5) * l.spread; arr[o + 2] = (Math.random() - .5) * l.spread; }
+      if (arr[o] > half) arr[o] -= l.spread;
+      if (arr[o + 2] > half) arr[o + 2] -= l.spread;
+    }
+    l.pts.geometry.attributes.position.needsUpdate = true;
+  }
+
+  const bloom = .62 + .38 * Math.pow(.5 + .5 * Math.sin(t * 1.05), 1.4);
+  if (stopRef.lamp) stopRef.lamp.intensity = 32 * bloom;
+  if (stopRef.signMat) stopRef.signMat.emissiveIntensity = .85 + .95 * bloom;
+  if (stopRef.barMat) stopRef.barMat.emissiveIntensity = .7 + .8 * bloom;
+  if (stopRef.glow) stopRef.glow.material.opacity = .2 + .26 * bloom;
+  if (stopRef.signGlow) stopRef.signGlow.material.opacity = .2 + .22 * bloom;
+  if (stopRef.pool) stopRef.pool.material.opacity = .1 + .1 * bloom;
+
+  if (busRef.grp && busRef.t < 1) {
+    busRef.t = Math.min(1, busRef.t + dt / busRef.dur);
+    const e = 1 - Math.pow(1 - busRef.t, 3);
+    busRef.grp.position.x = busRef.from + (busRef.to - busRef.from) * e;
+    const spin = (1 - busRef.t) * 9 * dt;
+    busRef.wheels.forEach(w => { w.rotation.z -= spin; });
+  }
+
+  if (snowStrength > 0) {
+    accRef.v = Math.min(1, accRef.v + dt * (.004 + snowStrength * .014));
+    if (accRef.mat) accRef.mat.opacity = .55 * accRef.v;
+    if (accRef.cover) accRef.cover.position.y = .06 + .012 * accRef.v;
+    for (const m of accRef.drifts) m.scale.y = .18 + .5 * accRef.v;
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+bindDrag();
+snowLayers.forEach(l => l.pts.position.set(0, 4, -4));
+applyCam();
+requestAnimationFrame(tick);
+
+window.VS3D = { show: (id, state, mm) => { compose(id); setWeather(state, mm); }, ready: true };
+if (window.VS_PENDING) window.VS3D.show(window.VS_PENDING[0], window.VS_PENDING[1], window.VS_PENDING[2]);
+
+</script>
+
 </body>
 </html>
