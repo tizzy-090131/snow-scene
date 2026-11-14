@@ -1,796 +1,419 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
-<title>全球雪景</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg stroke='%23f2f4f6' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='M12 2.5v19M4 7.2l16 9.6M4 16.8l16-9.6'/%3E%3C/g%3E%3C/svg%3E">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>雪境 · 3D氛围场景</title>
 <style>
-:root{
-  --white:#F4F6F8;
-  --gray:#8A9099;
-  --gray-2:#4C525A;
-  --line:rgba(255,255,255,.14);
-  --line-soft:rgba(255,255,255,.07);
-  --ease:cubic-bezier(.22,1,.36,1);
-}
-*{box-sizing:border-box}
-html,body{
-  margin:0;padding:0;height:100%;background:#000;color:var(--white);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
-  overflow:hidden;overscroll-behavior:none;
-  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
-}
-button{font-family:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
-:focus-visible{outline:1.5px solid rgba(255,255,255,.6);outline-offset:3px}
-
-#stage{position:fixed;inset:0;overflow:hidden;background:#000;z-index:1;}
-#bgCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1;}
-.vig{position:absolute;inset:0;z-index:5;pointer-events:none;
-  background:
-    radial-gradient(118% 92% at 50% 46%, rgba(0,0,0,0) 38%, rgba(2,6,12,.36) 76%, rgba(2,5,10,.66) 100%),
-    linear-gradient(180deg, rgba(2,6,12,.30) 0%, rgba(0,0,0,0) 26%);
-}
-
-.glass{
-  background:linear-gradient(180deg, rgba(255,255,255,.15) 0%, rgba(255,255,255,.055) 46%, rgba(255,255,255,.03) 100%);
-  border:1px solid rgba(255,255,255,.16);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
-    inset 0 -1px 0 rgba(255,255,255,.05),
-    0 10px 30px rgba(0,0,0,.45);
-}
-
-.pill{
-  position:fixed;top:calc(16px + env(safe-area-inset-top));left:16px;
-  height:42px;padding:0 14px 0 12px;border-radius:999px;
-  display:inline-flex;align-items:center;gap:9px;
-  z-index:60;
-  transition:transform .3s var(--ease);
-}
-.pill:active{transform:scale(.97)}
-.pill .dot{
-  width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.85);
-  box-shadow:0 0 10px rgba(255,255,255,.75);flex:none;
-}
-.pill .dot.off{background:rgba(255,255,255,.28);box-shadow:none}
-.pill .dot.warn{background:rgba(255,255,255,.55);box-shadow:0 0 8px rgba(255,255,255,.4)}
-.pill .dot.err{background:#ff6b6b;box-shadow:0 0 8px rgba(255,107,107,.5)}
-.pill .txt{
-  font-size:13px;letter-spacing:.06em;white-space:nowrap;color:rgba(255,255,255,.94);
-}
-.pill .chev{width:11px;height:11px;opacity:.6;flex:none;display:block}
-.pill .chev svg{width:11px;height:11px;display:block}
-
-.place{
-  position:fixed;left:22px;bottom:calc(28px + env(safe-area-inset-bottom));
-  z-index:58;pointer-events:none;
-  transition:opacity .4s var(--ease);
-}
-.place .cn{
-  display:block;font-weight:300;
-  font-size:29px;letter-spacing:.16em;line-height:1.2;
-  text-shadow:0 2px 22px rgba(0,0,0,.95);
-  transition:opacity .4s var(--ease);
-}
-.place .meta{
-  display:block;margin-top:5px;
-  font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.5);
-  text-shadow:0 1px 14px rgba(0,0,0,.95);
-  transition:opacity .4s var(--ease);
-}
-.place.quiet .cn,.place.quiet .meta{opacity:.42}
-
-.wx-btn{
-  position:fixed;right:16px;bottom:calc(28px + env(safe-area-inset-bottom));
-  width:52px;height:52px;border-radius:50%;
-  display:grid;place-items:center;z-index:80;
-  background:rgba(255,255,255,0.22);
-  border:1px solid rgba(255,255,255,0.38);
-  box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.35);
-  transition:transform .25s var(--ease),background .25s var(--ease);
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#050810;font-family:system-ui,sans-serif;color:#fff}
+canvas{display:block}
+#app{position:relative;width:100%;height:100%}
+.ui-wrap{position:fixed;z-index:10;inset:0;pointer-events:none}
+.ui-wrap>*{pointer-events:auto}
+.btn-place{
+  position:absolute;
+  left:12px;
+  bottom:12px;
+  padding:10px 16px;
+  background:rgba(20,30,48,0.75);
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:12px;
+  color:#fff;
+  font-size:14px;
   cursor:pointer;
+  backdrop-filter:blur(6px);
 }
-.wx-btn:hover{background:rgba(255,255,255,0.32);}
-.wx-btn:active{transform:scale(.94)}
-.wx-btn svg{width:24px;height:24px;stroke:rgba(255,255,255,.95);fill:none;stroke-width:1.7;filter:drop-shadow(0 0 6px rgba(255,255,255,.4));}
-.wx-btn.on{background:rgba(74,158,255,.38);border-color:rgba(140,200,255,.6)}
-
-.wx{
-  position:fixed;right:16px;bottom:calc(88px + env(safe-area-inset-bottom));
-  width:240px;border-radius:18px;padding:14px 16px 15px;
-  z-index:79;transform-origin:100% 100%;
-  transform:translateY(8px) scale(.96);opacity:0;pointer-events:none;
-  transition:opacity .26s var(--ease),transform .32s var(--ease);
+.place-panel{
+  position:fixed;
+  left:12px;
+  bottom:70px;
+  width:clamp(250px,32vw,340px);
+  max-height:46vh;
+  background:rgba(10,16,28,0.72);
+  border:1px solid rgba(255,255,255,0.16);
+  border-radius:14px;
+  padding:12px;
+  overflow-y:auto;
+  backdrop-filter:blur(8px);
+  display:none;
 }
-.wx.open{opacity:1;transform:none;pointer-events:auto}
-.wx .wtitle{
-  font-size:10px;letter-spacing:.22em;color:var(--gray);
-  display:flex;justify-content:space-between;align-items:center;gap:8px;
+.place-panel.show{display:block}
+.place-item{
+  padding:7px 9px;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+  transition:0.18s;
 }
-.wx .wbig{margin-top:9px;display:flex;align-items:baseline;gap:8px}
-.wx .wbig .t{font-size:32px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.wx .wbig .s{font-size:12px;letter-spacing:.1em;color:rgba(255,255,255,.72)}
-.wx .wrows{margin-top:12px;display:grid;gap:7px}
-.wx .wr{
-  display:flex;justify-content:space-between;gap:10px;
-  font-size:11.5px;color:var(--gray);letter-spacing:.04em;
-  border-top:1px solid var(--line-soft);padding-top:7px;
+.place-item:hover{background:rgba(255,255,255,0.1)}
+.place-item.active{background:rgba(120,170,255,0.22)}
+.info-tip{
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  padding:9px 13px;
+  background:rgba(10,16,28,0.65);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  font-size:12px;
+  backdrop-filter:blur(6px);
 }
-.wx .wr b{font-weight:400;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
-
-.sheet-mask{
-  position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);
-  opacity:0;pointer-events:none;transition:opacity .32s var(--ease);
-}
-.sheet-mask.open{opacity:1;pointer-events:auto}
-.sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:71;
-  max-height:74vh;display:flex;flex-direction:column;
-  border-radius:22px 22px 0 0;
-  background:linear-gradient(180deg, rgba(26,28,33,.88) 0%, rgba(11,12,15,.94) 100%);
-  -webkit-backdrop-filter:blur(28px) saturate(170%);
-  backdrop-filter:blur(28px) saturate(170%);
-  border-top:1px solid rgba(255,255,255,.14);
-  box-shadow:0 -18px 50px rgba(0,0,0,.55);
-  transform:translateY(101%);
-  transition:transform .42s var(--ease);
-  padding-bottom:env(safe-area-inset-bottom);
-}
-.sheet.open{transform:none}
-.sheet-head{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 20px 10px;flex:none;
-}
-.sheet-head .h{font-size:11px;letter-spacing:.24em;color:var(--gray)}
-.sheet-head .n{font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.5);font-variant-numeric:tabular-nums}
-.sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px}
-.sheet-foot{flex:none;padding:0 10px calc(14px + env(safe-area-inset-bottom))}
-.grp{font-size:10px;letter-spacing:.22em;color:var(--gray-2);padding:14px 10px 6px}
-.row{
-  display:flex;align-items:center;gap:12px;width:100%;
-  min-height:56px;padding:10px 12px;border-radius:14px;
-  text-align:left;transition:background .2s;
-}
-.row:active{background:rgba(255,255,255,.09)}
-.row:hover{background:rgba(255,255,255,.05)}
-.row .nm{font-size:14.5px;letter-spacing:.08em;line-height:1.35}
-.row .rg{display:block;font-size:10px;letter-spacing:.16em;color:var(--gray-2);margin-top:2px}
-.row .rt{
-  margin-left:auto;font-size:12px;color:rgba(255,255,255,.72);
-  font-variant-numeric:tabular-nums;letter-spacing:.02em;
-  display:flex;align-items:center;gap:8px;
-}
-.row .sd{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 0 8px rgba(255,255,255,.8)}
-.row .sd.soon{background:rgba(255,255,255,.4);box-shadow:none}
-.row .sd.none{background:rgba(255,255,255,.16);box-shadow:none}
-.row .sd.err{background:#ff6b6b;box-shadow:none}
-.row.dim .nm{color:rgba(255,255,255,.55)}
-.row.cur{background:rgba(255,255,255,.07)}
-.grabber{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:8px auto -2px;flex:none}
-.demo-row{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin:4px 10px 8px;padding:12px;border-radius:14px;
-  border:1px solid var(--line-soft);width:calc(100% - 20px);
-}
-.demo-row span{font-size:12px;letter-spacing:.08em;color:rgba(255,255,255,.7)}
-.toggle{
-  width:42px;height:24px;border-radius:999px;background:rgba(255,255,255,.14);
-  position:relative;flex:none;transition:background .25s;
-}
-.toggle::after{
-  content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
-  background:rgba(255,255,255,.9);transition:transform .3s var(--ease);
-}
-.toggle[aria-checked="true"]{background:rgba(255,255,255,.55)}
-.toggle[aria-checked="true"]::after{transform:translateX(18px)}
-
-@media (min-width:768px){
-  .pill{top:22px;left:24px;height:44px}
-  .place{left:30px;bottom:34px}
-  .place .cn{font-size:33px}
-  .wx-btn{right:24px;bottom:34px}
-  .wx{right:24px;bottom:92px}
-  .sheet{left:auto;right:20px;bottom:20px;width:368px;border-radius:20px;
-    max-height:74vh;transform:translateY(14px) scale(.97);opacity:0;
-    transition:opacity .26s var(--ease),transform .3s var(--ease);
-    border:1px solid rgba(255,255,255,.14);}
-  .sheet.open{transform:none;opacity:1}
-  .sheet-mask{background:rgba(0,0,0,.26)}
-}
-/* 横屏适配 */
-@media (orientation:landscape) and (max-height:500px){
-  .pill{top:10px;left:12px;height:36px;font-size:12px}
-  .place{left:20px;bottom:16px}
-  .place .cn{font-size:22px;letter-spacing:.12em}
-  .place .meta{font-size:9px;letter-spacing:.2em}
-  .wx-btn{right:16px;bottom:16px;width:44px;height:44px}
-  .wx{right:16px;bottom:70px;width:210px;padding:10px 12px 12px}
-  .wx .wbig .t{font-size:24px}
-  .wx .wrows{margin-top:8px;gap:5px}
-  .wx .wr{padding-top:5px;font-size:10.5px}
-  .sheet{top:60px;bottom:60px;left:20px;right:auto;width:300px;max-height:none;border-radius:16px}
-  .sheet-head{padding:10px 16px 6px}
-  .sheet-foot{padding:0 8px 10px}
-  .grabber{display:none}
-  .row{min-height:44px;padding:8px 10px}
-  .row .nm{font-size:13px}
-  .demo-row{margin:2px 8px 4px;padding:8px}
-}
-@media (prefers-reduced-motion:reduce){
-  *{transition-duration:.01s!important;animation-duration:.01s!important}
+.snow-toggle{
+  position:absolute;
+  right:12px;
+  top:12px;
+  padding:9px 14px;
+  background:rgba(10,16,28,0.7);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:10px;
+  font-size:13px;
+  cursor:pointer;
+  backdrop-filter:blur(6px);
 }
 </style>
 </head>
 <body>
-
-<div id="stage">
-  <canvas id="bgCanvas"></canvas>
-  <div class="vig"></div>
-
-  <button class="pill glass" id="pill" aria-label="选择地点" aria-expanded="false">
-    <span class="dot warn" id="pillDot"></span>
-    <span class="txt" id="pillTxt">加载中</span>
-    <span class="chev" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.6"><path d="M6 9l6 6 6-6" /></svg>
-    </span>
-  </button>
-
-  <div class="place" id="place">
-    <span class="cn" id="placeCn">—</span>
-    <span class="meta" id="placeMeta"></span>
+<div id="app">
+  <canvas id="mainCanvas"></canvas>
+  <div class="ui-wrap">
+    <button class="btn-place" id="btnPlace">切换地点</button>
+    <div class="place-panel" id="placePanel"></div>
+    <div class="info-tip">滚轮缩放 · 点击地点切换远景</div>
+    <button class="snow-toggle" id="snowToggle">下雪：开启</button>
   </div>
-
-  <button class="wx-btn glass" id="wxBtn" aria-label="查看天气" aria-expanded="false">
-    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M10.5 14.5V4a2.5 2.5 0 0 1 5 0v10.5a4 4 0 1 1-5 0Z" stroke-width="1.7"></path>
-      <path d="M13 7h2M13 10h2M13 13h2" stroke-width="1.5"></path>
-    </svg>
-  </button>
-
-  <div class="wx glass" id="wxCard" role="dialog" aria-label="天气详情">
-    <div class="wtitle"><span>此刻</span><span id="wxPlace"></span></div>
-    <div class="wbig"><span class="t" id="wxTemp">—</span><span class="s" id="wxCond">—</span></div>
-    <div class="wrows" id="wxRows"></div>
-  </div>
-</div>
-
-<div class="sheet-mask" id="mask"></div>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="选择地点">
-  <div class="grabber"></div>
-  <div class="sheet-head">
-    <span class="h">选择地点</span>
-    <span class="n" id="sheetCount"></span>
-  </div>
-  <div class="sheet-body" id="sheetBody"></div>
-  <div class="sheet-foot" id="sheetFoot"></div>
 </div>
 
 <script>
-const API_BASE = "https://api-us.open-meteo.com";
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+resize();
+addEventListener('resize',resize);
 
-const SCENES = [
-  {id:"altay",name:"阿勒泰",region:"中国·新疆",lat:47.85,lon:88.12},
-  {id:"changbai",name:"长白山",region:"中国·吉林",lat:42.00,lon:128.06},
-  {id:"shangri-la",name:"香格里拉",region:"中国·云南",lat:27.83,lon:99.70},
-  {id:"lhasa",name:"念青唐古拉山",region:"中国·西藏",lat:29.66,lon:91.12},
-  {id:"hulunbuir",name:"呼伦贝尔雪原",region:"中国·内蒙古",lat:49.22,lon:119.75},
-  {id:"tianshan",name:"天山",region:"中国·新疆",lat:43.79,lon:87.62},
-  {id:"qilian",name:"祁连山",region:"中国·青海",lat:39.58,lon:98.42},
-  {id:"gongga",name:"贡嘎雪山",region:"中国·四川",lat:29.59,lon:101.88},
-  {id:"k2",name:"乔戈里峰",region:"中国·新疆",lat:35.88,lon:76.51},
-  {id:"meili",name:"梅里雪山",region:"中国·云南",lat:28.45,lon:98.88},
-  {id:"daocheng",name:"稻城亚丁",region:"中国·四川",lat:28.50,lon:100.30},
-  {id:"helan",name:"贺兰山",region:"中国·宁夏",lat:38.85,lon:105.92},
-  {id:"fuji",name:"富士山",region:"日本·静冈县",lat:35.36,lon:138.73},
-  {id:"sapporo",name:"札幌雪原",region:"日本·北海道",lat:43.06,lon:141.35},
-  {id:"matterhorn",name:"马特洪峰",region:"瑞士·采尔马特",lat:45.98,lon:7.66},
-  {id:"jungfrau",name:"少女峰",region:"瑞士·伯尔尼",lat:46.55,lon:7.98},
-  {id:"rovaniemi",name:"罗瓦涅米",region:"芬兰·拉普兰",lat:66.50,lon:25.73},
-  {id:"longyearbyen",name:"朗伊尔城",region:"挪威·斯瓦尔巴",lat:78.22,lon:15.62},
-  {id:"tromso",name:"特罗姆瑟",region:"挪威",lat:69.65,lon:18.96},
-  {id:"banff",name:"班夫落基山",region:"加拿大",lat:51.18,lon:-115.57},
-  {id:"whistler",name:"惠斯勒雪山",region:"加拿大",lat:50.11,lon:-122.95},
-  {id:"denali",name:"迪纳利山",region:"美国·阿拉斯加",lat:63.07,lon:-151.01},
-  {id:"mtrainier",name:"雷尼尔山",region:"美国",lat:46.85,lon:-121.76},
-  {id:"patagonia",name:"巴塔哥尼亚",region:"阿根廷",lat:-49.22,lon:-73.03},
-  {id:"kilimanjaro",name:"乞力马扎罗",region:"坦桑尼亚",lat:-3.07,lon:37.35},
-  {id:"aoraki",name:"奥拉基库克山",region:"新西兰",lat:-43.53,lon:170.14},
-  {id:"montblanc",name:"勃朗峰",region:"法国阿尔卑斯",lat:45.83,lon:6.86},
-  {id:"grossglockner",name:"大格洛克纳山",region:"奥地利",lat:47.07,lon:12.75}
+// 地点列表 + 对应绘制标识
+const placeList = [
+  {id:'altai',name:'阿勒泰'},
+  {id:'changbaishan',name:'长白山'},
+  {id:'shangrila',name:'香格里拉'},
+  {id:'niantanggula',name:'念青唐古拉'},
+  {id:'hulunbuir',name:'呼伦贝尔'},
+  {id:'tianshan',name:'天山'},
+  {id:'qilianshan',name:'祁连山'},
+  {id:'gongga',name:'贡嘎雪山'},
+  {id:'k2',name:'乔戈里峰'},
+  {id:'meili',name:'梅里雪山'},
+  {id:'daocheng',name:'稻城亚丁'},
+  {id:'helan',name:'贺兰山'},
+  {id:'harbin',name:'哈尔滨'},
+  {id:'changchun',name:'长春'},
+  {id:'shenyang',name:'沈阳'},
+  {id:'lhasa',name:'拉萨'},
+  {id:'beijing',name:'北京'},
+  {id:'hangzhou',name:'杭州'},
+  {id:'fuji',name:'富士山'},
+  {id:'sapporo',name:'札幌'},
+  {id:'matterhorn',name:'马特洪峰'},
+  {id:'jungfrau',name:'少女峰'},
+  {id:'rovaniemi',name:'罗瓦涅米'},
+  {id:'tromso',name:'特罗姆瑟'},
+  {id:'banff',name:'班夫落基山'},
+  {id:'kilimanjaro',name:'乞力马扎罗'},
+  {id:'montblanc',name:'勃朗峰'},
+  {id:'rainier',name:'雷尼尔山'}
 ];
-
-const SNOW_CODES = [71,73,75,77,85,86];
-const SLEET_CODES = [66,67,68,79];
-const CACHE_KEY = "snowday.v5.cache";
-const CACHE_MIN = 20;
-const MAX_RETRY = 2;
-let mv = { list: [], cur: 0, demo: false };
-function byId(id){ return document.getElementById(id); }
-
-async function fetchOneWithRetry(scene, retry=0){
-  const url = `${API_BASE}/v1/forecast?latitude=${scene.lat}&longitude=${scene.lon}&current=temperature_2m,weather_code,snowfall,wind_speed_10m&hourly=snowfall,weather_code&forecast_days=2&timezone=UTC`;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if(!res.ok) throw new Error("http " + res.status);
-    const j = await res.json();
-    const cur = j.current || {};
-    const hourly = j.hourly || {};
-    const times = hourly.time || [];
-    const hCode = hourly.weather_code || [];
-    const hSnow = hourly.snowfall || [];
-    let nextSnow = null;
-    let sumSnow = 0;
-    const nowTs = Date.now();
-    for(let k=0;k<times.length;k++){
-      const t = new Date(times[k] + (times[k].length>16 ? "" : "Z")).getTime();
-      if(t < nowTs - 3600e3) continue;
-      if(t > nowTs + 24*3600e3) break;
-      if(SNOW_CODES.includes(hCode[k]) || SLEET_CODES.includes(hCode[k])){
-        sumSnow += Number(hSnow[k] || 0);
-        if(!nextSnow) nextSnow = new Date(t).toISOString();
-      }
-    }
-    return {
-      id: scene.id, ok: true,
-      temp: cur.temperature_2m, wind: cur.wind_speed_10m, code: cur.weather_code,
-      snowNow: SNOW_CODES.includes(cur.weather_code), sleetNow: SLEET_CODES.includes(cur.weather_code),
-      snow24h: sumSnow, nextSnow
-    };
-  } catch(err){
-    if(retry < MAX_RETRY){
-      await new Promise(r=>setTimeout(r, 600));
-      return fetchOneWithRetry(scene, retry + 1);
-    }
-    return { id: scene.id, ok: false, err: err.message };
-  }
-}
-
-function classifyStatus(item){
-  if(mv.demo) return "snow";
-  if(!item.ok) return "error";
-  if(item.snowNow) return "snow";
-  if(item.sleetNow) return "sleet";
-  if(item.nextSnow) return "soon";
-  return "none";
-}
-function formatTime(iso){
-  if(!iso) return "";
-  const d = new Date(iso);
-  return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
-}
-
-async function loadAll(){
-  byId("pillTxt").textContent = "正在获取天气…";
-  byId("pillDot").className = "dot warn";
-  const cachedRaw = localStorage.getItem(CACHE_KEY);
-  let cached = null;
-  try { cached = JSON.parse(cachedRaw); } catch(e){}
-  if(cached && cached.ts && Date.now() - cached.ts < CACHE_MIN*60000 && cached.data){
-    mv.list = cached.data;
-    buildUI();
-    byId("pillTxt").textContent = "使用缓存天气";
-    byId("pillDot").className = "dot";
-    return;
-  }
-  mv.list = [];
-  for(const s of SCENES){
-    const w = await fetchOneWithRetry(s);
-    mv.list.push({ scene: s, weather: w });
-    buildUI();
-  }
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: mv.list })); } catch(e){}
-  const failCount = mv.list.filter(x=>!x.weather.ok).length;
-  if(failCount > 0){
-    byId("pillTxt").textContent = `${failCount}个地点获取失败`;
-    byId("pillDot").className = "dot err";
-  }else{
-    byId("pillTxt").textContent = "天气已更新";
-    byId("pillDot").className = "dot";
-  }
-}
-
-function buildUI(){
-  buildSheet();
-  setPlace(mv.cur, true);
-}
-function setPlace(idx, instant){
-  if(idx < 0 || idx >= mv.list.length) return;
-  mv.cur = idx;
-  const entry = mv.list[idx];
-  const status = classifyStatus(entry.weather);
-  window.drawScene(entry.scene.id, status);
-  byId("placeCn").textContent = entry.scene.name;
-  byId("placeMeta").textContent = entry.scene.region;
-  byId("place").classList.toggle("quiet", !(status === "snow" || status === "sleet"));
-  fillWeatherPanel(entry, status);
-}
-function fillWeatherPanel(entry, status){
-  const w = entry.weather;
-  byId("wxPlace").textContent = entry.scene.name;
-  if(!w.ok){
-    byId("wxTemp").textContent = "—";
-    byId("wxCond").textContent = "获取失败";
-    byId("wxRows").innerHTML = `<div class="wr"><span>提示</span><b>网络异常，可开演示下雪</b></div>`;
-    return;
-  }
-  byId("wxTemp").textContent = (w.temp != null ? w.temp + "°" : "—");
-  let condText = "无降雪";
-  if(status === "snow") condText = mv.demo ? "演示降雪" : "正在下雪";
-  else if(status === "sleet") condText = "雨夹雪";
-  else if(status === "soon") condText = "即将下雪";
-  byId("wxCond").textContent = condText;
-  const rows = [
-    ["风速", w.wind != null ? w.wind + " km/h" : "—"],
-    ["未来24h降雪", w.snow24h != null ? w.snow24h.toFixed(1) + " cm" : "—"],
-    ["预计开始", w.nextSnow ? formatTime(w.nextSnow) : "—"],
-    ["状态", condText]
-  ];
-  byId("wxRows").innerHTML = rows.map(r => `<div class="wr"><span>${r[0]}</span><b>${r[1]}</b></div>`).join("");
-}
-
-function buildSheet(){
-  const groups = { snow:[], sleet:[], soon:[], none:[], error:[] };
-  mv.list.forEach((item, i) => {
-    const st = classifyStatus(item.weather);
-    if(groups[st]) groups[st].push({item,i});
-    else groups.none.push({item,i});
-  });
-  function renderGroup(title, arr, dotClass){
-    if(!arr.length) return "";
-    let html = `<div class="grp">${title} · ${arr.length}</div>`;
-    arr.forEach(({item,i}) => {
-      const w = item.weather;
-      const tempText = w.ok && w.temp != null ? w.temp + "°" : "";
-      html += `
-        <button class="row ${i === mv.cur ? "cur" : ""} ${(classifyStatus(w) === "none") ? "dim" : ""}" data-i="${i}">
-          <span>
-            <span class="nm">${item.scene.name}</span>
-            <span class="rg">${item.scene.region}</span>
-          </span>
-          <span class="rt">
-            <span>${tempText}</span>
-            <span class="sd ${dotClass}"></span>
-          </span>
-        </button>
-      `;
-    });
-    return html;
-  }
-  const body = renderGroup("正在下雪", groups.snow, "")
-    + renderGroup("雨夹雪", groups.sleet, "")
-    + renderGroup("即将下雪", groups.soon, "soon")
-    + renderGroup("暂无降雪", groups.none, "none")
-    + renderGroup("获取失败", groups.error, "err");
-  byId("sheetBody").innerHTML = body;
-  byId("sheetCount").textContent = mv.list.length + " 个地点";
-  byId("sheetFoot").innerHTML = `
-    <div class="demo-row" id="demoRow">
-      <span>演示：全部地点开启下雪</span>
-      <span class="toggle" role="switch" aria-checked="${mv.demo ? "true" : "false"}" id="demoTog"></span>
-    </div>
-  `;
-  byId("sheetBody").querySelectorAll(".row").forEach(btn => {
-    btn.onclick = () => { setPlace(Number(btn.dataset.i), false); closeSheet(); };
-  });
-  byId("demoRow").onclick = () => {
-    mv.demo = !mv.demo;
-    byId("demoTog").setAttribute("aria-checked", mv.demo ? "true" : "false");
-    buildUI();
-  };
-}
-function openSheet(){ buildSheet(); byId("sheet").classList.add("open"); byId("mask").classList.add("open"); byId("pill").setAttribute("aria-expanded", "true"); }
-function closeSheet(){ byId("sheet").classList.remove("open"); byId("mask").classList.remove("open"); byId("pill").setAttribute("aria-expanded", "false"); }
-byId("pill").onclick = () => { if(byId("sheet").classList.contains("open")) closeSheet(); else openSheet(); };
-byId("mask").onclick = closeSheet;
-byId("wxBtn").onclick = () => {
-  const card = byId("wxCard");
-  const btn = byId("wxBtn");
-  const open = card.classList.toggle("open");
-  btn.classList.toggle("on", open);
-  btn.setAttribute("aria-expanded", open ? "true" : "false");
-};
-
-const canvas = byId("bgCanvas");
-const ctx = canvas.getContext("2d");
-let W, H;
+let currentPlace = 'altai';
+let snowOn = true;
+let scale = 1;
 let stars = [];
-let snowList = [];
-let showSnow = false;
-let currentScene = "altay";
-function resize(){
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  canvas.style.width = W + "px";
-  canvas.style.height = H + "px";
-  createStars();
-}
-window.addEventListener("resize", resize);
-function createStars(){
+let snowParticles = [];
+
+// 星空初始化
+function initStar(){
   stars = [];
-  const count = Math.floor((W * H) / 1100);
-  for(let i = 0; i < count; i++){
-    const type = Math.random();
-    let size, baseA, spd, bright, hue;
-    if(type < 0.05){
-      size = Math.random() * 0.8 + 1.2;
-      baseA = Math.random() * 0.15 + 0.75;
-      spd = Math.random() * 0.001 + 0.0003;
-      bright = true;
-      hue = "200,220,255";
-    } else if(type < 0.3){
-      size = Math.random() * 0.5 + 0.5;
-      baseA = Math.random() * 0.2 + 0.45;
-      spd = Math.random() * 0.0008 + 0.0002;
-      bright = false;
-      hue = "255,255,255";
-    } else {
-      size = Math.random() * 0.4 + 0.2;
-      baseA = Math.random() * 0.25 + 0.25;
-      spd = Math.random() * 0.0005 + 0.0001;
-      bright = false;
-      hue = "255,255,255";
-    }
+  for(let i=0;i<350;i++){
     stars.push({
-      x: Math.random() * W, y: Math.random() * H * 0.8,
-      r: size, baseA: baseA, spd: spd, phase: Math.random() * Math.PI * 2,
-      bright: bright, hue: hue
-    });
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height*0.72,
+      r:Math.random()*0.65+0.15,
+      twinkle:Math.random()*Math.PI*2,
+      speed:0.015+Math.random()*0.03
+    })
   }
 }
-function resetSnow(enable){
-  showSnow = enable; snowList = [];
-  if(!enable) return;
-  const density = Math.floor((W * H) / 1800);
-  const baseCount = Math.max(500, Math.min(1200, density));
-  for(let layer = 0; layer < 3; layer++){
-    const layerCount = layer === 0 ? baseCount * 0.4 : layer === 1 ? baseCount * 0.35 : baseCount * 0.25;
-    for(let i = 0; i < layerCount; i++){
-      const depth = layer / 2;
-      snowList.push({
-        x: Math.random() * W,
-        y: Math.random() * -H,
-        layer: layer,
-        size: (Math.random() * 1.2 + 0.4) * (1 + depth * 1.8),
-        speed: (Math.random() * 0.6 + 0.4) * (0.5 + depth * 1.2),
-        driftAmp: Math.random() * 0.5 + 0.2,
-        driftFreq: Math.random() * 0.0012 + 0.0006,
-        phase: Math.random() * Math.PI * 2,
-        opacity: 0.35 + depth * 0.35 + Math.random() * 0.2
-      });
-    }
+initStar();
+
+// 雪花粒子
+function createSnow(){
+  snowParticles = [];
+  for(let i=0;i<180;i++){
+    snowParticles.push({
+      x:Math.random()*canvas.width,
+      y:Math.random()*canvas.height,
+      r:Math.random()*2.2+0.4,
+      vy:Math.random()*1.2+0.6,
+      vx:Math.random()*0.4-0.2,
+      opacity:Math.random()*0.55+0.25
+    })
   }
 }
-function drawBackground(){
-  const gradSky = ctx.createLinearGradient(0,0,0,H);
-  gradSky.addColorStop(0,"#070e20");
-  gradSky.addColorStop(0.45,"#122444");
-  gradSky.addColorStop(1,"#203860");
-  ctx.fillStyle = gradSky; ctx.fillRect(0,0,W,H);
+createSnow();
 
-  if(currentScene === "altay") drawAltay();
-  else if(currentScene === "tianshan") drawTianshan();
-  else if(currentScene === "shangri-la") drawShangrila();
-  else if(currentScene === "lhasa") drawNyangqentanglha();
-  else if(currentScene === "hulunbuir") drawHulunbuir();
-  else if(currentScene === "changbai") drawChangbai();
-  else drawGenericMountains();
-
-  const gradGround = ctx.createLinearGradient(0, H * 0.72, 0, H);
-  gradGround.addColorStop(0, "#a0b4d4");
-  gradGround.addColorStop(1, "#354460");
-  ctx.fillStyle = gradGround; ctx.fillRect(0, H * 0.72, W, H * 0.28);
-}
-
-function drawGenericMountains(){
-  ctx.fillStyle = "#141f33";
-  ctx.beginPath(); ctx.moveTo(0,H);
-  for(let x = 0; x <= W; x += 120){
-    const h = H * 0.38 + Math.sin(x * 0.007) * H * 0.16 + Math.cos(x * 0.013) * H * 0.08;
-    ctx.lineTo(x, h);
-  }
-  ctx.lineTo(W, H); ctx.fill();
-  ctx.fillStyle = "#0f1726";
-  ctx.beginPath(); ctx.moveTo(0,H);
-  for(let x = 0; x <= W; x += 80){
-    const h = H * 0.55 + Math.sin(x * 0.011) * H * 0.11;
-    ctx.lineTo(x, h);
-  }
-  ctx.lineTo(W, H); ctx.fill();
-}
-
-function drawAltay(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.55);
-  ctx.lineTo(W * 0.15, H * 0.35);
-  ctx.lineTo(W * 0.3, H * 0.45);
-  ctx.lineTo(W * 0.5, H * 0.28);
-  ctx.lineTo(W * 0.7, H * 0.42);
-  ctx.lineTo(W * 0.85, H * 0.33);
-  ctx.lineTo(W, H * 0.5);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.fill();
-  ctx.fillStyle = "#0f1a2e";
-  for(let i = 0; i < 8; i++){
-    const bx = W * 0.05 + i * W * 0.12;
-    const by = H * 0.72;
-    ctx.fillRect(bx, by - 8, 3, 20);
-    ctx.fillRect(bx - 8, by - 2, 20, 2);
-  }
-  for(let i = 0; i < 5; i++){
-    const hx = W * 0.1 + i * W * 0.2;
-    const hy = H * 0.68;
-    ctx.fillStyle = "rgba(255,200,100,0.6)";
-    ctx.beginPath(); ctx.arc(hx, hy, 2, 0, Math.PI * 2); ctx.fill();
-  }
-}
-
-function drawTianshan(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.6);
-  ctx.lineTo(W * 0.2, H * 0.25);
-  ctx.lineTo(W * 0.35, H * 0.4);
-  ctx.lineTo(W * 0.55, H * 0.2);
-  ctx.lineTo(W * 0.75, H * 0.38);
-  ctx.lineTo(W, H * 0.55);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.fill();
-  const lakeGrad = ctx.createLinearGradient(0, H * 0.65, 0, H * 0.75);
-  lakeGrad.addColorStop(0, "rgba(80,140,200,0.4)");
-  lakeGrad.addColorStop(1, "rgba(40,80,140,0.6)");
-  ctx.fillStyle = lakeGrad;
-  ctx.fillRect(0, H * 0.65, W, H * 0.1);
-}
-
-function drawShangrila(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.55);
-  ctx.lineTo(W * 0.25, H * 0.4);
-  ctx.lineTo(W * 0.5, H * 0.48);
-  ctx.lineTo(W * 0.75, H * 0.38);
-  ctx.lineTo(W, H * 0.52);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.fill();
-  const tx = W * 0.4;
-  const ty = H * 0.55;
-  ctx.fillStyle = "#2a3550";
-  ctx.fillRect(tx - 30, ty, 60, 40);
-  ctx.beginPath();
-  ctx.moveTo(tx - 35, ty);
-  ctx.lineTo(tx, ty - 15);
-  ctx.lineTo(tx + 35, ty);
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,200,80,0.5)";
-  ctx.beginPath(); ctx.arc(tx, ty - 18, 3, 0, Math.PI * 2); ctx.fill();
-  for(let i = 0; i < 6; i++){
-    const fx = W * 0.15 + i * W * 0.05;
-    ctx.fillStyle = `rgba(${100 + i * 20},${150 - i * 10},200,0.6)`;
+// 绘制星空
+function drawStar(time){
+  stars.forEach(s=>{
+    s.twinkle += s.speed;
+    const alpha = 0.35 + Math.sin(s.twinkle)*0.32;
     ctx.beginPath();
-    ctx.moveTo(fx, H * 0.5);
-    ctx.lineTo(fx + 10, H * 0.55);
-    ctx.lineTo(fx, H * 0.6);
-    ctx.fill();
-  }
-}
-
-function drawNyangqentanglha(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.5);
-  ctx.lineTo(W * 0.3, H * 0.3);
-  ctx.lineTo(W * 0.6, H * 0.42);
-  ctx.lineTo(W, H * 0.35);
-  ctx.lineTo(W, H * 0.65);
-  ctx.lineTo(W * 0.8, H * 0.6);
-  ctx.lineTo(W * 0.6, H * 0.7);
-  ctx.lineTo(W * 0.3, H * 0.62);
-  ctx.lineTo(0, H * 0.68);
-  ctx.fill();
-  const lakeGrad = ctx.createLinearGradient(0, H * 0.65, 0, H * 0.75);
-  lakeGrad.addColorStop(0, "rgba(100,160,220,0.35)");
-  lakeGrad.addColorStop(1, "rgba(50,100,170,0.5)");
-  ctx.fillStyle = lakeGrad;
-  ctx.fillRect(0, H * 0.65, W, H * 0.1);
-}
-
-function drawHulunbuir(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.5);
-  ctx.lineTo(W * 0.5, H * 0.45);
-  ctx.lineTo(W, H * 0.5);
-  ctx.lineTo(W, H);
-  ctx.lineTo(0, H);
-  ctx.fill();
-  const yurtX = W * 0.35;
-  const yurtY = H * 0.65;
-  ctx.fillStyle = "#2a3550";
-  ctx.beginPath();
-  ctx.moveTo(yurtX - 25, yurtY);
-  ctx.lineTo(yurtX, yurtY - 18);
-  ctx.lineTo(yurtX + 25, yurtY);
-  ctx.fill();
-  ctx.fillRect(yurtX - 25, yurtY, 50, 15);
-  const yurtX2 = W * 0.65;
-  ctx.fillStyle = "#2a3550";
-  ctx.beginPath();
-  ctx.moveTo(yurtX2 - 20, yurtY + 5);
-  ctx.lineTo(yurtX2, yurtY - 10);
-  ctx.lineTo(yurtX2 + 20, yurtY + 5);
-  ctx.fill();
-  ctx.fillRect(yurtX2 - 20, yurtY + 5, 40, 12);
-}
-
-function drawChangbai(){
-  ctx.fillStyle = "#1a2740";
-  ctx.beginPath();
-  ctx.moveTo(0, H * 0.5);
-  ctx.lineTo(W * 0.2, H * 0.3);
-  ctx.lineTo(W * 0.5, H * 0.25);
-  ctx.lineTo(W * 0.8, H * 0.32);
-  ctx.lineTo(W, H * 0.48);
-  ctx.lineTo(W, H * 0.6);
-  ctx.lineTo(0, H * 0.6);
-  ctx.fill();
-  const lakeGrad = ctx.createLinearGradient(0, H * 0.55, 0, H * 0.65);
-  lakeGrad.addColorStop(0, "rgba(60,130,200,0.5)");
-  lakeGrad.addColorStop(1, "rgba(30,80,150,0.6)");
-  ctx.fillStyle = lakeGrad;
-  ctx.beginPath();
-  ctx.ellipse(W * 0.5, H * 0.58, W * 0.3, H * 0.06, 0, 0, Math.PI * 2);
-  ctx.fill();
-}
-function render(time){
-  ctx.clearRect(0,0,W,H);
-  drawBackground();
-  for(const s of stars){
-    const tw = Math.sin(time * s.spd + s.phase);
-    const alpha = s.baseA * (0.85 + 0.15 * tw);
-    if(s.bright){
-      const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 2.5);
-      g.addColorStop(0, `rgba(${s.hue},${alpha * 0.6})`);
-      g.addColorStop(1, `rgba(${s.hue},0)`);
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = g; ctx.fill();
-    }
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
     ctx.fillStyle = `rgba(255,255,255,${alpha})`;
     ctx.fill();
-  }
-  if(showSnow){
-    for(const f of snowList){
-      f.y += f.speed;
-      f.x += Math.sin(time * f.driftFreq + f.phase) * f.driftAmp;
-      if(f.y > H + 10){ f.y = -10; f.x = Math.random() * W; }
-      if(f.x > W + 10) f.x = -10;
-      if(f.x < -10) f.x = W + 10;
-      const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.size * 1.2);
-      g.addColorStop(0, `rgba(255,255,255,${f.opacity})`);
-      g.addColorStop(0.5, `rgba(255,255,255,${f.opacity * 0.5})`);
-      g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
-      ctx.fillStyle = g; ctx.fill();
+  })
+}
+
+// 绘制雪花
+function drawSnow(){
+  if(!snowOn) return;
+  snowParticles.forEach(p=>{
+    p.y += p.vy;
+    p.x += p.vx;
+    if(p.y>canvas.height){
+      p.y = -5;
+      p.x = Math.random()*canvas.width;
     }
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${p.opacity})`;
+    ctx.fill();
+  })
+}
+
+// 【核心：Canvas 手绘各地标远景氛围】
+function drawLandmark(pid){
+  const w = canvas.width;
+  const h = canvas.height;
+  const horizon = h * 0.68;
+  ctx.save();
+  ctx.scale(scale,scale);
+  const fogAlpha = snowOn ? 0.35 : 0.75;
+
+  // 通用夜空渐变基底
+  const skyGrad = ctx.createLinearGradient(0,0,0,horizon+80);
+  skyGrad.addColorStop(0,'#040814');
+  skyGrad.addColorStop(1,'#0b1528');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0,0,w,horizon+100);
+
+  ctx.globalAlpha = fogAlpha;
+
+  // 逐个地点轮廓绘制
+  if(pid==='altai'){
+    // 阿勒泰：远山 + 村落暖光 + 木栅栏
+    ctx.fillStyle='#121c2e';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon);
+    ctx.quadraticCurveTo(w*0.25,horizon-90,w*0.45,horizon-140);
+    ctx.quadraticCurveTo(w*0.7,horizon-100,w,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+    // 暖光点
+    for(let i=0;i<12;i++){
+      const lx = w*(0.15+i*0.07);
+      const ly = horizon + 15 + Math.sin(i*1.4)*12;
+      ctx.beginPath();
+      ctx.arc(lx,ly,1.8,0,Math.PI*2);
+      ctx.fillStyle='#ffd888';ctx.fill();
+    }
+  }else if(pid==='changbaishan'){
+    // 长白山 天池火山
+    ctx.fillStyle='#101a2c';
+    ctx.beginPath();
+    ctx.moveTo(w*0.2,horizon);
+    ctx.lineTo(w*0.38,horizon-160);
+    ctx.lineTo(w*0.62,horizon-160);
+    ctx.lineTo(w*0.8,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+    // 天池湖面
+    ctx.beginPath();
+    ctx.ellipse(w/2,horizon-45,w*0.13,24,0,0,Math.PI*2);
+    ctx.fillStyle='#163052';ctx.fill();
+  }else if(pid==='shangrila'){
+    // 香格里拉 藏式金顶寺庙+经幡
+    ctx.fillStyle='#11192b';
+    ctx.beginPath();
+    ctx.moveTo(w*0.35,horizon-110);
+    ctx.lineTo(w*0.5,horizon-180);
+    ctx.lineTo(w*0.65,horizon-110);
+    ctx.lineTo(w*0.72,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w/2,horizon-170,9,0,Math.PI*2);
+    ctx.fillStyle='#ffdd77';ctx.fill();
+  }else if(pid==='niantanggula'){
+    // 念青唐古拉 高原湖湾冰川远山
+    ctx.fillStyle='#101b30';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon);
+    ctx.quadraticCurveTo(w*0.35,horizon-130,w*0.55,horizon-175);
+    ctx.quadraticCurveTo(w*0.8,horizon-115,w,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(w*0.3,horizon+10);
+    ctx.quadraticCurveTo(w*0.5,horizon-10,w*0.72,horizon+10);
+    ctx.fillStyle='#142b4c';ctx.fill();
+  }else if(pid==='hulunbuir'){
+    // 呼伦贝尔 草原+蒙古包
+    ctx.fillStyle='#0f1726';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon+10);
+    ctx.quadraticCurveTo(w*0.5,horizon-25,w,horizon+10);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+    // 蒙古包轮廓
+    ctx.beginPath();
+    ctx.arc(w*0.32,horizon+12,22,Math.PI,0);
+    ctx.lineTo(w*0.32-22,horizon+12);ctx.fill();
+    ctx.beginPath();
+    ctx.arc(w*0.68,horizon+14,18,Math.PI,0);
+    ctx.lineTo(w*0.68-18,horizon+14);ctx.fill();
+  }else if(pid==='tianshan'){
+    ctx.fillStyle='#101a2c';
+    ctx.beginPath();
+    ctx.moveTo(w*0.18,horizon);
+    ctx.lineTo(w*0.42,horizon-210);
+    ctx.lineTo(w*0.58,horizon-150);
+    ctx.lineTo(w*0.85,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='qilianshan'){
+    ctx.fillStyle='#131c2e';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon);
+    ctx.quadraticCurveTo(w*0.22,horizon-75,w*0.4,horizon-120);
+    ctx.quadraticCurveTo(w*0.65,horizon-85,w,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='gongga'){
+    ctx.fillStyle='#10192a';
+    ctx.beginPath();
+    ctx.moveTo(w*0.33,horizon);
+    ctx.lineTo(w*0.5,horizon-225);
+    ctx.lineTo(w*0.67,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='k2'){
+    ctx.fillStyle='#0f1828';
+    ctx.beginPath();
+    ctx.moveTo(w*0.38,horizon);
+    ctx.lineTo(w*0.5,horizon-240);
+    ctx.lineTo(w*0.62,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='meili'){
+    ctx.fillStyle='#111a2b';
+    ctx.beginPath();
+    ctx.moveTo(w*0.15,horizon);
+    ctx.lineTo(w*0.32,horizon-135);
+    ctx.lineTo(w*0.44,horizon-170);
+    ctx.lineTo(w*0.56,horizon-145);
+    ctx.lineTo(w*0.75,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='daocheng'){
+    ctx.fillStyle='#111a2b';
+    ctx.beginPath();
+    ctx.moveTo(w*0.28,horizon);
+    ctx.lineTo(w*0.38,horizon-155);
+    ctx.lineTo(w*0.5,horizon-190);
+    ctx.lineTo(w*0.63,horizon-140);
+    ctx.lineTo(w*0.74,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='helan'){
+    ctx.fillStyle='#121b2d';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon);
+    ctx.quadraticCurveTo(w*0.45,horizon-95,w,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='harbin'){
+    ctx.fillStyle='#121b2d';
+    ctx.beginPath();
+    ctx.moveTo(w*0.2,horizon);
+    ctx.lineTo(w*0.3,horizon-85);
+    ctx.lineTo(w*0.4,horizon);
+    ctx.quadraticCurveTo(w*0.65,horizon-65,w*0.8,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='lhasa'){
+    ctx.fillStyle='#10192a';
+    ctx.beginPath();
+    ctx.moveTo(w*0.35,horizon);
+    ctx.lineTo(w*0.5,horizon-130);
+    ctx.lineTo(w*0.65,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='fuji'){
+    ctx.fillStyle='#111a2b';
+    ctx.beginPath();
+    ctx.moveTo(w*0.3,horizon);
+    ctx.lineTo(w*0.5,horizon-190);
+    ctx.lineTo(w*0.7,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='matterhorn'){
+    ctx.fillStyle='#0f1726';
+    ctx.beginPath();
+    ctx.moveTo(w*0.38,horizon);
+    ctx.lineTo(w*0.5,horizon-220);
+    ctx.lineTo(w*0.62,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else if(pid==='tromso'){
+    ctx.fillStyle='#101a2c';
+    ctx.beginPath();
+    ctx.moveTo(w*0.36,horizon);
+    ctx.lineTo(w*0.5,horizon-110);
+    ctx.lineTo(w*0.64,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
+  }else{
+    // 其余地点统一柔和远山兜底
+    ctx.fillStyle='#111a2b';
+    ctx.beginPath();
+    ctx.moveTo(0,horizon);
+    ctx.quadraticCurveTo(w*0.48,horizon-110,w,horizon);
+    ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();
   }
+  ctx.restore();
+}
+
+// 渲染主循环
+function render(time){
+  ctx.fillStyle='#03060d';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  drawStar(time);
+  drawLandmark(currentPlace);
+  drawSnow();
   requestAnimationFrame(render);
 }
-window.drawScene = function(id, status){
-  currentScene = id;
-  resetSnow(status === "snow" || status === "sleet");
-};
-resize(); requestAnimationFrame(render);
-loadAll();
-setInterval(loadAll, CACHE_MIN * 60000);
-</script>
 
+// 滚轮缩放
+canvas.addEventListener('wheel',e=>{
+  e.preventDefault();
+  scale = Math.max(0.55,Math.min(2.2,scale - e.deltaY*0.0008));
+})
+
+// UI 地点列表渲染
+const panel = document.getElementById('placePanel');
+const btnPlace = document.getElementById('btnPlace');
+const snowBtn = document.getElementById('snowToggle');
+placeList.forEach(p=>{
+  const div = document.createElement('div');
+  div.className = 'place-item';
+  div.innerText = p.name;
+  div.dataset.id = p.id;
+  div.onclick = ()=>{
+    currentPlace = p.id;
+    document.querySelectorAll('.place-item').forEach(i=>i.classList.remove('active'));
+    div.classList.add('active');
+    panel.classList.remove('show');
+  }
+  panel.appendChild(div);
+})
+btnPlace.onclick = ()=>panel.classList.toggle('show');
+snowBtn.onclick = ()=>{
+  snowOn = !snowOn;
+  snowBtn.innerText = `下雪：${snowOn?'开启':'关闭'}`;
+}
+
+requestAnimationFrame(render);
+</script>
 </body>
 </html>
