@@ -216,12 +216,70 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .toggle[aria-checked="true"]{background:rgba(255,255,255,.55)}
 .toggle[aria-checked="true"]::after{transform:translateX(18px)}
 
+/* ===== 留言 ===== */
+.msg-btn{
+  position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;
+  height:42px;padding:0 13px 0 11px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:7px;z-index:30;
+  transition:transform .3s var(--ease);
+}
+.msg-btn:active{transform:scale(.97)}
+.msg-btn svg{width:15px;height:15px;stroke:rgba(255,255,255,.82);fill:none;stroke-width:1.5;flex:none}
+.msg-btn .t{font-size:13px;letter-spacing:.06em;color:rgba(255,255,255,.92)}
+.msg-btn .n{font-size:11px;letter-spacing:.02em;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
+
+.msg-card{
+  position:absolute;z-index:36;width:min(268px,74vw);
+  padding:12px 12px 11px;border-radius:16px;
+  opacity:0;pointer-events:none;transform:translate(-50%,-100%) translateY(6px) scale(.96);
+  transform-origin:50% 100%;
+  transition:opacity .22s var(--ease),transform .3s var(--ease);
+}
+.msg-card{
+  background:linear-gradient(180deg, rgba(24,27,33,.93) 0%, rgba(10,12,16,.95) 100%);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 18px 46px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.msg-card.open{opacity:1;pointer-events:auto;transform:translate(-50%,-100%) scale(1)}
+.msg-card .tip{font-size:10px;letter-spacing:.2em;color:var(--gray);margin-bottom:8px}
+.msg-card textarea{
+  width:100%;height:60px;resize:none;border:1px solid var(--line);border-radius:11px;
+  background:rgba(255,255,255,.06);color:var(--white);font:inherit;font-size:13px;
+  line-height:1.5;padding:9px 10px;outline:none;display:block;
+}
+.msg-card textarea::placeholder{color:rgba(255,255,255,.32)}
+.msg-card .acts{display:flex;gap:8px;margin-top:9px}
+.msg-card .acts button{flex:1;height:34px;border-radius:10px;font-size:12.5px;letter-spacing:.06em;transition:background .2s}
+.msg-card .no{background:rgba(255,255,255,.07);color:rgba(255,255,255,.68);border:1px solid var(--line-soft)}
+.msg-card .ok{background:rgba(255,255,255,.9);color:#10141a}
+.msg-card .no:active{background:rgba(255,255,255,.13)}
+.msg-card .ok:active{background:#fff}
+
+.msg-tabs{display:flex;gap:7px;overflow-x:auto;padding:0 16px 11px;flex:none;scrollbar-width:none}
+.msg-tabs::-webkit-scrollbar{display:none}
+.msg-tab{
+  flex:none;height:30px;padding:0 12px;border-radius:999px;white-space:nowrap;
+  font-size:12px;letter-spacing:.05em;color:rgba(255,255,255,.55);
+  background:rgba(255,255,255,.03);border:1px solid var(--line-soft);
+  transition:color .2s,background .2s,border-color .2s;
+}
+.msg-tab.on{color:#fff;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.26)}
+.msg-list{padding:0 12px 12px}
+.msg-item{
+  display:flex;gap:10px;padding:11px 12px;border-radius:13px;margin-bottom:6px;
+  background:rgba(255,255,255,.045);border:1px solid var(--line-soft);
+}
+.msg-item svg{flex:none;width:13px;height:13px;margin-top:3px;opacity:.55;stroke:rgba(255,255,255,.85);fill:none;stroke-width:1.4}
+.msg-item .tx{font-size:13px;line-height:1.55;color:rgba(255,255,255,.9);word-break:break-word}
+.msg-empty{font-size:12px;letter-spacing:.08em;color:rgba(255,255,255,.4);padding:30px 12px;text-align:center}
+
 @media (min-width:768px){
   .pill{top:22px;left:24px;height:44px}
   .place{left:30px;bottom:34px}
   .place .cn{font-size:33px}
   .wx-btn{right:24px;bottom:34px}
   .wx{right:24px;bottom:92px}
+  .msg-btn{top:22px;right:24px;height:44px}
   .sheet{left:auto;right:20px;bottom:20px;width:368px;border-radius:20px;
     max-height:74vh;transform:translateY(14px) scale(.97);opacity:0;
     transition:opacity .26s var(--ease),transform .3s var(--ease);
@@ -260,6 +318,19 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
     <div class="wbig"><span class="t" id="wxTemp">—</span><span class="s" id="wxCond"></span></div>
     <div class="wrows" id="wxRows"></div>
   </div>
+  <button class="msg-btn glass" id="msgBtn" aria-label="查看留言" aria-expanded="false">
+    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4.8 5.9a2.9 2.9 0 012.9-2.9h8.6a2.9 2.9 0 012.9 2.9v6.4a2.9 2.9 0 01-2.9 2.9H9.9l-4 3.2v-3.2"/></svg>
+    <span class="t">留言</span><span class="n" id="msgBtnN">0</span>
+  </button>
+
+  <div class="msg-card glass" id="msgCard" role="dialog" aria-label="给这片雪留言">
+    <div class="tip">给这片雪留一句话</div>
+    <textarea id="msgText" maxlength="24" placeholder="雪落在哪里，你在想什么"></textarea>
+    <div class="acts">
+      <button class="no" id="msgNo" type="button">放走</button>
+      <button class="ok" id="msgOk" type="button">确认</button>
+    </div>
+  </div>
 </div>
 
 <div class="sheet-mask" id="mask"></div>
@@ -272,6 +343,18 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   <div class="sheet-body" id="sheetBody"></div>
   <div class="sheet-foot" id="sheetFoot"></div>
 </div>
+
+<div class="sheet-mask" id="msgMask"></div>
+<div class="sheet" id="msgPanel" role="dialog" aria-label="大家的留言">
+  <div class="grabber"></div>
+  <div class="sheet-head">
+    <span class="h">大家的留言</span>
+    <span class="n" id="msgTotal"></span>
+  </div>
+  <div class="msg-tabs" id="msgTabs"></div>
+  <div class="sheet-body"><div class="msg-list" id="msgList"></div></div>
+</div>
+
 
 <script id="scenes-data">
 const SCENES=[{"id": "fuji", "name": "富士山", "region": "日本 · 静冈县", "lat": 35.36, "lon": 138.73, "back": "", "front": "M20.0,556.0 110.0,486.0 200.0,412.0 280.0,340.0 340.0,296.0 390.0,246.0 432.0,196.0 468.0,158.0 488.0,144.0 500.0,140.0 512.0,148.0 524.0,158.0 556.0,196.0 598.0,244.0 640.0,292.0 700.0,356.0 770.0,430.0 838.0,494.0 900.0,532.0 940.0,556.0 Z", "hair": "M300.0,346.0 C362,300 404,266 440,238 M690.0,346.0 C646,306 610,272 574,246 M466.0,214.0 C480,200 492,190 500,184"},
@@ -507,6 +590,7 @@ function setPlace(i, instant){
   byId('place').classList.toggle('quiet', !(st==='snow' || st==='sleet'));
   setPill((st==='snow' || st==='sleet') ? 'on' : 'off', m.scene.name);
   fillWeather(m);
+  if(byId('msgPanel').classList.contains('open')) buildMsgPanel(m.scene.id);
   if(!mv.weather) byId('wxCard').classList.remove('open');
 }
 
@@ -588,6 +672,7 @@ function buildSheet(){
 }
 
 function openSheet(){
+  if(byId('msgPanel').classList.contains('open')) closeMsgPanel();
   buildSheet();
   byId('sheet').classList.add('open');
   byId('mask').classList.add('open');
@@ -599,12 +684,121 @@ function closeSheet(){
   byId('pill').setAttribute('aria-expanded','false');
 }
 
+/* ===== 留言 ===== */
+var MSG_KEY = 'snowday_msgs_v1';
+var SEED_MSG = {
+  fuji: ['凌晨四点半，山脚的雪是斜着落的', '便利店的热咖啡，配一场雪刚好'],
+  sapporo: ['雪落在狸小路，路灯把雪照成金色', '第一次穿羽绒服出门，走两步就热了'],
+  changbai: ['天池的风把雪吹成一片白雾', '在这里才知道雪可以不化，直接变成冰'],
+  sophia: ['教堂穹顶落了雪，像撒了一层糖霜', '索菲亚广场的雪，比照片里安静'],
+  corner: ['护城河结了薄冰，角楼的雪压着檐角', '等了一场雪，拍了半小时'],
+  tianshan: ['天山的雪线又开始往下走了', '车窗外一片白，什么都看不见'],
+  potala: ['阳光落在雪上，刺得人睁不开眼', '拉萨的雪来得快，走得也快'],
+  matterhorn: ['马特洪峰的雪在夜里发蓝', '小镇的钟声和雪一起落下来'],
+  jungfrau: ['少女峰的雪比云还高', '雪板压过的地方，留下一条白线'],
+  stbasil: ['红场的雪落在彩色的穹顶上', '冷得手机都关机了，雪还在下'],
+  rovaniemi: ['零下二十度，雪踩上去吱吱响', '北极圈的雪，像是从天上慢慢倒下来'],
+  newyork: ['曼哈顿的雪落地就化了，只有中央公园留下来', '第五大道的雪，被人踩成灰色的泥'],
+  whistler: ['惠斯勒的雪，粉得能吹起来', '缆车上看雪，整座山都是白的'],
+  gwanghwamun: ['光化门的雪落在石狮子上', '首尔的雪总是赶在夜里']
+};
+function loadMsgs(){
+  try{
+    var raw = localStorage.getItem(MSG_KEY);
+    if(!raw) return {};
+    var o = JSON.parse(raw);
+    return (o && typeof o === 'object') ? o : {};
+  }catch(e){ return {}; }
+}
+var msgs = loadMsgs();
+Object.keys(SEED_MSG).forEach(function(k){
+  var cur = msgs[k];
+  if(!cur || !cur.length) msgs[k] = SEED_MSG[k].slice();
+});
+function saveMsgs(){
+  try{ localStorage.setItem(MSG_KEY, JSON.stringify(msgs)); }catch(e){}
+}
+function msgTotalCount(){
+  var n = 0;
+  Object.keys(msgs).forEach(function(k){ n += (msgs[k]||[]).length; });
+  return n;
+}
+function refreshMsgCount(){
+  byId('msgBtnN').textContent = msgTotalCount();
+}
+function escHtml(t){
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+var FLAKE_SVG = '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 2.6v18.8M4.2 7l15.6 10M4.2 17l15.6-10"/></svg>';
+
+window.__snowSave = function(id, text){
+  if(!id || !text) return;
+  if(!msgs[id]) msgs[id] = [];
+  msgs[id].unshift(text);
+  saveMsgs();
+  refreshMsgCount();
+  if(byId('msgPanel').classList.contains('open')) buildMsgPanel(id);
+};
+
+var msgSel = null;
+function buildMsgPanel(keepId){
+  var curId = (mv.order[mv.cur] && mv.order[mv.cur].scene) ? mv.order[mv.cur].scene.id : null;
+  if(keepId) msgSel = keepId;
+  if(!msgSel) msgSel = curId;
+  var arr = mv.order.map(function(m){ return m.scene; });
+  var list = arr.slice().sort(function(a,b){
+    if(a.id===curId && b.id!==curId) return -1;
+    if(b.id===curId && a.id!==curId) return 1;
+    return (msgs[b.id]||[]).length - (msgs[a.id]||[]).length;
+  });
+  byId('msgTabs').innerHTML = list.map(function(sc){
+    var n = (msgs[sc.id]||[]).length;
+    return '<button class="msg-tab'+(sc.id===msgSel?' on':'')+'" data-id="'+sc.id+'" type="button">'
+      + sc.name + (n ? ' <span style="opacity:.5">'+n+'</span>' : '') + '</button>';
+  }).join('');
+  var items = msgs[msgSel] || [];
+  var sc = null;
+  list.forEach(function(x){ if(x.id===msgSel) sc = x; });
+  byId('msgTotal').textContent = '共 ' + msgTotalCount() + ' 条';
+  byId('msgList').innerHTML = items.length
+    ? items.map(function(t){
+        return '<div class="msg-item">' + FLAKE_SVG + '<div class="tx">' + escHtml(t) + '</div></div>';
+      }).join('')
+    : '<div class="msg-empty">这里还没有人留言</div>';
+  Array.prototype.forEach.call(byId('msgTabs').querySelectorAll('.msg-tab'), function(el){
+    el.addEventListener('click', function(){
+      msgSel = el.getAttribute('data-id');
+      buildMsgPanel();
+    });
+  });
+}
+refreshMsgCount();
+
+function openMsgPanel(){
+  if(window.__snowCloseCard) window.__snowCloseCard();
+  closeSheet();
+  buildMsgPanel();
+  byId('msgPanel').classList.add('open');
+  byId('msgMask').classList.add('open');
+  byId('msgBtn').setAttribute('aria-expanded','true');
+}
+function closeMsgPanel(){
+  byId('msgPanel').classList.remove('open');
+  byId('msgMask').classList.remove('open');
+  byId('msgBtn').setAttribute('aria-expanded','false');
+}
+
 /* ===== 交互 ===== */
 byId('pill').addEventListener('click', function(){
   var open = byId('sheet').classList.contains('open');
   if(open) closeSheet(); else openSheet();
 });
 byId('mask').addEventListener('click', closeSheet);
+byId('msgBtn').addEventListener('click', function(){
+  var open = byId('msgPanel').classList.contains('open');
+  if(open) closeMsgPanel(); else openMsgPanel();
+});
+byId('msgMask').addEventListener('click', closeMsgPanel);
 byId('wxBtn').addEventListener('click', function(){
   mv.weather = !mv.weather;
   byId('wxCard').classList.toggle('open', mv.weather);
@@ -613,7 +807,9 @@ byId('wxBtn').addEventListener('click', function(){
 });
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape'){
-    if(byId('sheet').classList.contains('open')) closeSheet();
+    if(byId('msgPanel').classList.contains('open')) closeMsgPanel();
+    else if(window.__snowCloseCard) window.__snowCloseCard();
+    else if(byId('sheet').classList.contains('open')) closeSheet();
     else if(mv.weather){
       mv.weather = false;
       byId('wxCard').classList.remove('open');
@@ -745,6 +941,188 @@ const snowNear = makeSnow(600, 1.5, 0.36, 95, 46);
 const snowClose = makeSnow(1600, .32, .45, 20, 12);
 snowFar.speed = 1.9; snowMid.speed = 1.7; snowNear.speed = 1.6; snowClose.speed = 1.5;
 snowFar.drift = .7; snowMid.drift = .9; snowNear.drift = 1.3; snowClose.drift = 1.6;
+
+/* ================= 抓一朵雪 · 写留言 ================= */
+const pickV = new THREE.Vector3();
+const heldFlake = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: softTex, color: 0xe9f4ff, transparent: true, depthWrite: false,
+  blending: THREE.AdditiveBlending, opacity: .95
+}));
+heldFlake.scale.set(1.5, 1.5, 1);
+heldFlake.visible = false;
+scene.add(heldFlake);
+const held = { l: null, i: -1, pos: new THREE.Vector3() };
+const flyingMsgs = [];
+
+function pickFlake(cx, cy) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const px = (cx - rect.left) / rect.width * 2 - 1;
+  const py = 1 - (cy - rect.top) / rect.height * 2;
+  let best = null, bestD = 1e18;
+  for (const l of snowLayers) {
+    if (!l.pts.visible) continue;
+    const arr = l.pts.geometry.attributes.position.array;
+    const n = l.pts.geometry.drawRange.count;
+    for (let i = 0; i < n; i++) {
+      pickV.set(
+        arr[i * 3] + l.pts.position.x,
+        arr[i * 3 + 1] + l.pts.position.y,
+        arr[i * 3 + 2] + l.pts.position.z
+      );
+      if (pickV.distanceTo(camera.position) > 32) continue;
+      pickV.project(camera);
+      if (pickV.z > 1) continue;
+      const dx = (pickV.x - px) * rect.width * .5;
+      const dy = (pickV.y - py) * rect.height * .5;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = { l, i }; }
+    }
+  }
+  const R = Math.min(innerWidth, innerHeight) * .17;
+  return (best && bestD < R * R) ? best : null;
+}
+
+function grabFlake(cx, cy) {
+  if (held.l) return true;
+  const hit = pickFlake(cx, cy);
+  if (!hit) return false;
+  const arr = hit.l.pts.geometry.attributes.position.array;
+  held.pos.set(
+    arr[hit.i * 3] + hit.l.pts.position.x,
+    arr[hit.i * 3 + 1] + hit.l.pts.position.y,
+    arr[hit.i * 3 + 2] + hit.l.pts.position.z
+  );
+  held.l = hit.l; held.i = hit.i;
+  heldFlake.position.copy(held.pos);
+  heldFlake.material.opacity = .95;
+  heldFlake.visible = true;
+  return true;
+}
+
+function releaseHeld() {
+  heldFlake.visible = false;
+  held.l = null; held.i = -1;
+}
+
+function rrect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function makeMsgSprite(text) {
+  const raw = String(text).slice(0, 24);
+  const lines = raw.length <= 12 ? [raw] : [raw.slice(0, Math.ceil(raw.length / 2)), raw.slice(Math.ceil(raw.length / 2))];
+  const fs = 40, lh = 50, pad = 22, iconW = 46;
+  const cv = document.createElement('canvas');
+  const meas = cv.getContext('2d');
+  meas.font = '500 ' + fs + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+  let tw = 0;
+  for (const l of lines) tw = Math.max(tw, meas.measureText(l).width);
+  const w = Math.ceil(tw + iconW + pad * 2);
+  const h = Math.ceil(lines.length * lh + pad * 1.7);
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d');
+  c.font = '500 ' + fs + 'px "PingFang SC","Microsoft YaHei",sans-serif';
+  rrect(c, 1.5, 1.5, w - 3, h - 3, Math.min(h / 2, 26));
+  c.fillStyle = 'rgba(8,13,20,.8)';
+  c.fill();
+  c.strokeStyle = 'rgba(198,224,247,.5)';
+  c.lineWidth = 2;
+  c.stroke();
+  const cx = pad + 12, cy = h / 2;
+  c.strokeStyle = 'rgba(232,244,255,.95)';
+  c.lineWidth = 2.6;
+  c.lineCap = 'round';
+  for (let k = 0; k < 3; k++) {
+    const a = k * Math.PI / 3;
+    c.beginPath();
+    c.moveTo(cx - Math.cos(a) * 11, cy - Math.sin(a) * 11);
+    c.lineTo(cx + Math.cos(a) * 11, cy + Math.sin(a) * 11);
+    c.stroke();
+  }
+  c.fillStyle = '#ffffff';
+  c.textBaseline = 'middle';
+  lines.forEach((l, i) => {
+    c.fillText(l, pad + iconW, h / 2 - (lines.length - 1) * lh / 2 + i * lh + 1);
+  });
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 4;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  spr.userData.aspect = w / h;
+  spr.userData.hpx = h;
+  return spr;
+}
+
+function spawnMsg(pos, text) {
+  const spr = makeMsgSprite(text);
+  const dist = Math.max(2, pos.distanceTo(camera.position));
+  const H = Math.min(1.9, Math.max(.72, dist * .062));
+  spr.scale.set(H * spr.userData.aspect, H, 1);
+  spr.position.copy(pos);
+  scene.add(spr);
+  flyingMsgs.push({ sp: spr, t: 0, life: 11, drift: Math.random() * 6 });
+  while (flyingMsgs.length > 8) {
+    const old = flyingMsgs.shift();
+    scene.remove(old.sp);
+    old.sp.material.map.dispose(); old.sp.material.dispose();
+  }
+}
+
+function clearMsgs() {
+  flyingMsgs.forEach(m => {
+    scene.remove(m.sp);
+    m.sp.material.map.dispose(); m.sp.material.dispose();
+  });
+  flyingMsgs.length = 0;
+}
+
+function positionCard() {
+  const card = document.getElementById('msgCard');
+  const ta = document.getElementById('msgText');
+  const p = held.pos.clone().project(camera);
+  const x = (p.x * .5 + .5) * innerWidth;
+  const y = (-p.y * .5 + .5) * innerHeight;
+  const cw = Math.min(268, innerWidth * .74);
+  const left = Math.min(innerWidth - cw / 2 - 10, Math.max(cw / 2 + 10, x));
+  const top = Math.min(innerHeight - 20, Math.max(196, y - 20));
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+  ta.value = '';
+  card.classList.add('open');
+  setTimeout(() => { if (card.classList.contains('open')) ta.focus(); }, 120);
+}
+
+function closeCard(save) {
+  const card = document.getElementById('msgCard');
+  const ta = document.getElementById('msgText');
+  const text = save ? (ta.value || '').trim().slice(0, 24) : '';
+  const pos = held.pos.clone();
+  card.classList.remove('open');
+  ta.value = '';
+  ta.blur();
+  releaseHeld();
+  if (save && text) {
+    spawnMsg(pos, text);
+    if (window.__snowSave && curSceneId) window.__snowSave(curSceneId, text);
+  }
+}
+window.__snowCloseCard = () => { if (document.getElementById('msgCard').classList.contains('open')) closeCard(false); };
+
+renderer.domElement.addEventListener('click', e => {
+  const card = document.getElementById('msgCard');
+  if (card.classList.contains('open')) { closeCard(false); return; }
+  if (!grabFlake(e.clientX, e.clientY)) return;
+  positionCard();
+});
+document.getElementById('msgOk').addEventListener('click', () => closeCard(true));
+document.getElementById('msgNo').addEventListener('click', () => closeCard(false));
+
 snowLayers.forEach(l => l.baseSpeed = l.speed);
 
 /* ================= 星空（只在上坡视角出现） ================= */
@@ -1425,6 +1803,8 @@ let curSceneId = '';
 function compose(id, name, sub) {
   if (curGroup && id === curSceneId) return;
   curSceneId = id;
+  clearMsgs();
+  if (held.l) closeCard(false);
   lampRefs.length = 0;
   if (curGroup) { scene.remove(curGroup); curGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   const rnd = mulberry(137);
@@ -1507,6 +1887,7 @@ function tick(now) {
     const arr = l.pts.geometry.attributes.position.array;
     const half = l.spread / 2;
     for (let i = 0; i < l.count; i++) {
+      if (held.l === l && held.i === i) continue;
       const o = i * 3;
       arr[o + 1] -= l.speed * dt;
       arr[o] += Math.sin(t * .6 + l.seed[i]) * .20 * dt * 3 + .30 * dt * l.drift;
@@ -1516,6 +1897,25 @@ function tick(now) {
       if (arr[o + 2] > half) arr[o + 2] -= l.spread;
     }
     l.pts.geometry.attributes.position.needsUpdate = true;
+  }
+
+  if (heldFlake.visible) {
+    const pulse = 1 + Math.sin(t * 6.5) * .18;
+    heldFlake.scale.set(1.5 * pulse, 1.5 * pulse, 1);
+    heldFlake.material.opacity = .72 + Math.abs(Math.sin(t * 6.5)) * .3;
+  }
+
+  for (let i = flyingMsgs.length - 1; i >= 0; i--) {
+    const m = flyingMsgs[i];
+    m.t += dt;
+    m.sp.position.y -= .85 * dt;
+    m.sp.position.x += Math.sin(m.t * .7 + m.drift) * .12 * dt * 3 + .04 * dt;
+    if (m.t > m.life - 2.6) m.sp.material.opacity = Math.max(0, (m.life - m.t) / 2.6);
+    if (m.t > m.life || m.sp.position.y < -.5) {
+      scene.remove(m.sp);
+      m.sp.material.map.dispose(); m.sp.material.dispose();
+      flyingMsgs.splice(i, 1);
+    }
   }
 
   const fl = flick(t, 0);
