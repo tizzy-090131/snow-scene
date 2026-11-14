@@ -499,8 +499,8 @@ function setPlace(i, instant){
   var m = mv.order[i];
   mv.cur = i;
   var st = m.st;
-  window.VS_PENDING = [m.scene.id, st, m.place.mm || 0];
-  if(window.VS3D) window.VS3D.show(m.scene.id, st, m.place.mm || 0);
+  window.VS_PENDING = [m.scene.id, st, m.place.mm || 0, m.scene.name, m.scene.region];
+  if(window.VS3D) window.VS3D.show(m.scene.id, st, m.place.mm || 0, m.scene.name, m.scene.region);
   byId('placeCn').textContent = m.scene.name;
   byId('placeMeta').textContent = m.scene.region;
   byId('place').classList.toggle('quiet', !(st==='snow' || st==='sleet'));
@@ -741,7 +741,8 @@ function makeSnow(count, size, alpha, spread, height) {
 const snowFar = makeSnow(5200, 0.42, 0.34, 160, 80);
 const snowMid = makeSnow(3200, 0.8, 0.42, 120, 62);
 const snowNear = makeSnow(600, 1.5, 0.36, 95, 46);
-snowFar.speed = 1.5; snowMid.speed = 2.6; snowNear.speed = 4.0;
+const snowClose = makeSnow(1600, .32, .45, 20, 12);
+snowFar.speed = 1.5; snowMid.speed = 2.6; snowNear.speed = 4.0; snowClose.speed = 5.4;
 snowLayers.forEach(l => l.baseSpeed = l.speed);
 
 /* ================= 星空（只在上坡视角出现） ================= */
@@ -865,7 +866,7 @@ function lamp(g, x, z, h) {
   bulb.position.set(1.15, h - 0.62, 0);
   grp.add(bulb);
 
-  const light = new THREE.PointLight(0xffb877, 60, 34, 2);
+  const light = new THREE.PointLight(0xffb877, 40, 32, 2);
   light.position.set(1.15, h - 0.7, 0);
   grp.add(light);
 
@@ -1082,15 +1083,106 @@ function crossRoad(g) {
   const rnd = mulberry(41);
   for (let i = 0; i < 30; i++) {
     const side = i % 2 ? 1 : -1;
-    const m = new THREE.Mesh(new THREE.SphereGeometry(.4 + rnd() * .5, 8, 6), MAT.snow);
-    m.scale.set(2.6, .3, 1.4);
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.34 + rnd() * .34, 8, 6), MAT.snow);
+    m.scale.set(2.0, .26, 1.2);
     m.position.set(-36 + rnd() * 72, .05, -18 + side * (5.7 + rnd() * 1.5));
     grp.add(m);
   }
   g.add(grp);
 }
 
-function buildStop(g) {
+
+function stationSign(g, name, sub) {
+  const c = document.createElement('canvas');
+  c.width = 320; c.height = 480;
+  const x = c.getContext('2d');
+  let hh = 0;
+  const t = (name || '') + (sub || '');
+  for (let i = 0; i < t.length; i++) hh = (hh * 31 + t.charCodeAt(i)) | 0;
+  const pal = ['#5fd3d0', '#ffb35c', '#8fb8ff', '#e88fa8', '#7ee0a8', '#c9a6ff', '#ffd166', '#6ec6ff'];
+  const accent = pal[Math.abs(hh) % pal.length];
+  const num = ('0' + (1 + Math.abs(hh) % 12)).slice(-2);
+
+  const bg = x.createLinearGradient(0, 0, 0, 480);
+  bg.addColorStop(0, '#16324a');
+  bg.addColorStop(1, '#07131e');
+  x.fillStyle = bg;
+  x.fillRect(0, 0, 320, 480);
+
+  x.strokeStyle = 'rgba(206,232,250,.65)';
+  x.lineWidth = 5;
+  x.strokeRect(4, 4, 312, 472);
+  x.fillStyle = accent;
+  x.fillRect(4, 4, 312, 11);
+
+  const rr = (cx, cy, w, h, r) => {
+    x.beginPath();
+    x.moveTo(cx + r, cy);
+    x.lineTo(cx + w - r, cy); x.arcTo(cx + w, cy, cx + w, cy + r, r);
+    x.lineTo(cx + w, cy + h - r); x.arcTo(cx + w, cy + h, cx + w - r, cy + h, r);
+    x.lineTo(cx + r, cy + h); x.arcTo(cx, cy + h, cx, cy + h - r, r);
+    x.lineTo(cx, cy + r); x.arcTo(cx, cy, cx + r, cy, r);
+    x.closePath();
+  };
+  x.fillStyle = accent;
+  rr(120, 42, 80, 44, 10); x.fill();
+  x.fillStyle = 'rgba(7,19,30,.85)';
+  rr(130, 52, 24, 18, 4); x.fill();
+  rr(164, 52, 26, 18, 4); x.fill();
+  x.fillStyle = accent;
+  x.beginPath(); x.arc(138, 92, 8, 0, 6.283); x.fill();
+  x.beginPath(); x.arc(182, 92, 8, 0, 6.283); x.fill();
+
+  x.textAlign = 'center';
+  const nm = name || '';
+  const two = nm.length >= 6;
+  const fs = two ? 42 : nm.length >= 5 ? 48 : 58;
+  x.fillStyle = '#ffffff';
+  x.font = '600 ' + fs + 'px "Noto Serif CJK SC","PingFang SC","Microsoft YaHei",sans-serif';
+  if (two) {
+    const cut = Math.ceil(nm.length / 2);
+    x.fillText(nm.slice(0, cut), 160, 178);
+    x.fillText(nm.slice(cut), 160, 178 + fs * 1.08);
+  } else {
+    x.fillText(nm, 160, 192);
+  }
+  x.fillStyle = 'rgba(214,234,250,.95)';
+  x.font = '20px "Noto Serif CJK SC","PingFang SC","Microsoft YaHei",sans-serif';
+  x.fillText(sub || '', 160, two ? 268 : 236);
+
+  x.strokeStyle = 'rgba(190,214,236,.35)';
+  x.lineWidth = 2;
+  x.beginPath(); x.moveTo(70, two ? 286 : 266); x.lineTo(250, two ? 286 : 266); x.stroke();
+
+  x.fillStyle = accent;
+  x.font = '700 92px "Helvetica Neue",Arial,sans-serif';
+  x.fillText(num, 160, 352);
+  x.fillStyle = 'rgba(200,224,244,.72)';
+  x.font = '17px "Helvetica Neue",Arial,sans-serif';
+  x.fillText('NIGHT  LINE', 160, 396);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  const grp = new THREE.Group();
+  grp.position.set(-4.7, 0, -10.4);
+  grp.add(cyl(.045, .055, 2.98, 8, MAT.dark, 0, 1.49, 0));
+  grp.add(cyl(.09, .1, .05, 8, MAT.dark, 0, .03, 0));
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .85,
+    roughness: .42, metalness: .1
+  });
+  grp.add(box(1.15, 1.72, .06, mat, 0, 2.02, .1));
+  grp.add(box(1.19, .05, .12, MAT.roofSnow, 0, 2.9, .1));
+  const base = new THREE.Mesh(new THREE.SphereGeometry(.42, 12, 8), MAT.snow);
+  base.scale.set(1.5, .22, 1.2);
+  base.position.set(0, .02, 0);
+  grp.add(base);
+  g.add(grp);
+}
+
+function buildStop(g, name, sub) {
   const px = -1.1, pz = -25.4;
   const grp = new THREE.Group();
 
@@ -1129,7 +1221,7 @@ function buildStop(g) {
   const barMat = new THREE.MeshStandardMaterial({ color: 0x241a10, emissive: 0xffd9a4, emissiveIntensity: 1.0 });
   grp.add(box(4.6, .07, .18, barMat, px, 2.46, pz + .1));
 
-  const lampLight = new THREE.PointLight(0xffcf9c, 34, 34, 2);
+  const lampLight = new THREE.PointLight(0xffcf9c, 38, 34, 2);
   lampLight.position.set(px, 2.3, pz + .2);
   grp.add(lampLight);
 
@@ -1155,6 +1247,7 @@ function buildStop(g) {
   pool.position.set(px, .25, pz + .6);
   grp.add(pool);
 
+  stationSign(g, name, sub);
   g.add(grp);
   stopRef.signMat = signMat;
   stopRef.barMat = barMat;
@@ -1278,7 +1371,7 @@ function buildBus(g) {
 }
 
 /* ================= 相机 ================= */
-const cam = { az: 0.06, pitch: 0.10, look: 0, dist: 21, target: new THREE.Vector3(0, 2.4, -8), auto: 0.014, drag: false };
+const cam = { az: 0.06, pitch: 0.10, look: 0, dist: 21, target: new THREE.Vector3(0, 2.4, -8), auto: 0, drag: false };
 let lastX = 0, lastY = 0;
 
 function applyCam() {
@@ -1314,7 +1407,7 @@ function bindDrag() {
 /* ================= 组装 ================= */
 let curGroup = null;
 
-function compose(id) {
+function compose(id, name, sub) {
   if (curGroup) { scene.remove(curGroup); curGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
   const rnd = mulberry(137);
   const g = new THREE.Group();
@@ -1328,26 +1421,23 @@ function compose(id) {
   for (let i = 0; i < 12; i++) {
     g.add(spruce(2.6 + rnd() * 3.2, -48 + rnd() * 96, -62 - rnd() * 26, false));
   }
-  for (let i = 0; i < 14; i++) {
-    const w = 4 + rnd() * 6, h = 8 + rnd() * 20;
-    g.add(box(w, h, w * 0.8, MAT.dark, (rnd() - .5) * 78, h / 2, -72 - rnd() * 26));
-  }
 
   lamp(g, -9.5, -12.5, 4.6);
   lamp(g, 7.4, -13.5, 5.2);
   fence(g, -26, -9.5, 16, true);
 
-  buildStop(g);
+  buildStop(g, name, sub);
   buildAcc(g);
   buildBus(g);
 
   scene.add(g);
   curGroup = g;
 
-  cam.target.set(.4, 1.85, -21.5);
-  cam.dist = 30;
-  cam.pitch = 0.05;
-  cam.az = -0.22;
+  cam.target.set(.2, 1.95, -22.0);
+  cam.dist = 26;
+  cam.pitch = 0.02;
+  cam.look = 0.05;
+  cam.az = -0.18;
   applyCam();
 }
 
@@ -1375,10 +1465,9 @@ function tick(now) {
 
   /* 星空：只有抬头才看得到 */
   const want = starMat.uniforms.uFade.value;
-  const starTarget = (!snowLayers[0].pts.visible && cam.look > 0.09) ? 1 : 0;
+  const starTarget = .8;
   starMat.uniforms.uFade.value = want + (starTarget - want) * Math.min(1, dt * 4);
 
-  if (!cam.drag) { cam.az += cam.auto * dt; applyCam(); }
 
   for (const l of snowLayers) {
     if (!l.pts.visible) continue;
@@ -1397,7 +1486,7 @@ function tick(now) {
   }
 
   const bloom = .62 + .38 * Math.pow(.5 + .5 * Math.sin(t * 1.05), 1.4);
-  if (stopRef.lamp) stopRef.lamp.intensity = 32 * bloom;
+  if (stopRef.lamp) stopRef.lamp.intensity = 40 * bloom;
   if (stopRef.signMat) stopRef.signMat.emissiveIntensity = .85 + .95 * bloom;
   if (stopRef.barMat) stopRef.barMat.emissiveIntensity = .7 + .8 * bloom;
   if (stopRef.glow) stopRef.glow.material.opacity = .2 + .26 * bloom;
@@ -1429,13 +1518,15 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-bindDrag();
-snowLayers.forEach(l => l.pts.position.set(0, 4, -4));
+snowFar.pts.position.set(0, 4, -4);
+snowMid.pts.position.set(0, 4, -4);
+snowNear.pts.position.set(0, 3, 2);
+snowClose.pts.position.set(-3, 1, -9);
 applyCam();
 requestAnimationFrame(tick);
 
-window.VS3D = { show: (id, state, mm) => { compose(id); setWeather(state, mm); }, ready: true };
-if (window.VS_PENDING) window.VS3D.show(window.VS_PENDING[0], window.VS_PENDING[1], window.VS_PENDING[2]);
+window.VS3D = { show: (id, state, mm, name, sub) => { compose(id, name, sub); setWeather(state, mm); }, ready: true };
+if (window.VS_PENDING) window.VS3D.show(window.VS_PENDING[0], window.VS_PENDING[1], window.VS_PENDING[2], window.VS_PENDING[3], window.VS_PENDING[4]);
 
 </script>
 
