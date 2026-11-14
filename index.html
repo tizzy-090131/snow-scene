@@ -735,7 +735,7 @@ function makeSnow(count, size, alpha, spread, height) {
   const pts = new THREE.Points(geo, mat);
   pts.frustumCulled = false;
   scene.add(pts);
-  const l = { pts, count, spread, height, speed: 0, seed, baseSpeed: 0, baseAlpha: alpha };
+  const l = { pts, count, spread, height, speed: 0, seed, baseSpeed: 0, baseAlpha: alpha, drift: 1 };
   snowLayers.push(l);
   return l;
 }
@@ -743,7 +743,8 @@ const snowFar = makeSnow(5200, 0.42, 0.34, 160, 80);
 const snowMid = makeSnow(3200, 0.8, 0.42, 120, 62);
 const snowNear = makeSnow(600, 1.5, 0.36, 95, 46);
 const snowClose = makeSnow(1600, .32, .45, 20, 12);
-snowFar.speed = 1.5; snowMid.speed = 2.6; snowNear.speed = 4.0; snowClose.speed = 5.4;
+snowFar.speed = 1.9; snowMid.speed = 1.7; snowNear.speed = 1.6; snowClose.speed = 1.5;
+snowFar.drift = .7; snowMid.drift = .9; snowNear.drift = 1.3; snowClose.drift = 1.6;
 snowLayers.forEach(l => l.baseSpeed = l.speed);
 
 /* ================= 星空（只在上坡视角出现） ================= */
@@ -1170,7 +1171,9 @@ function stationSign(g, name, sub) {
   tex.anisotropy = 4;
 
   const grp = new THREE.Group();
-  grp.position.set(-4.7, 0, -10.4);
+  const land = camera.aspect > 1.25;
+  grp.position.set(land ? -4.9 : -4.7, 0, land ? -13.6 : -10.4);
+  grp.scale.setScalar(land ? .92 : 1);
   grp.add(cyl(.045, .055, 2.98, 8, MAT.dark, 0, 1.49, 0));
   grp.add(cyl(.09, .1, .05, 8, MAT.dark, 0, .03, 0));
   const mat = new THREE.MeshStandardMaterial({
@@ -1367,13 +1370,15 @@ function buildBus(g) {
   g.add(grp);
   busRef.grp = grp;
   busRef.wheels = wheels;
-  busRef.from = 14.4;
+  const halfW = cam.dist * Math.tan(camera.fov * Math.PI / 360) * camera.aspect * 1.12;
+  const edge = halfW + 4.6;
+  busRef.from = edge;
   busRef.to = 2.1;
-  busRef.exit = -14.0;
+  busRef.exit = -edge;
   busRef.t = 0;
-  busRef.dur = 4.4;
+  busRef.dur = 4.4 * Math.max(1, Math.pow((busRef.from - busRef.to) / 12.3, .55));
   busRef.hold = 1.8;
-  busRef.outDur = 4.6;
+  busRef.outDur = 4.6 * Math.max(1, Math.pow((busRef.to - busRef.exit) / 16.1, .55));
   busRef.phase = 'in';
   busRef.wait = 0;
   grp.position.set(busRef.from, 0, -20);
@@ -1439,6 +1444,21 @@ function compose(id, name, sub) {
   lamp(g, 7.4, -13.5, 5.2);
   fence(g, -26, -9.5, 16, true);
 
+  if (camera.aspect > 1.25) {
+    cam.target.set(-.4, 1.9, -24.0);
+    cam.dist = 21;
+    cam.pitch = 0.04;
+    cam.look = 0.02;
+    cam.az = -0.16;
+  } else {
+    cam.target.set(.2, 1.95, -22.0);
+    cam.dist = 26;
+    cam.pitch = 0.02;
+    cam.look = 0.05;
+    cam.az = -0.18;
+  }
+  applyCam();
+
   buildStop(g, name, sub);
   buildAcc(g);
   buildBus(g);
@@ -1446,12 +1466,6 @@ function compose(id, name, sub) {
   scene.add(g);
   curGroup = g;
 
-  cam.target.set(.2, 1.95, -22.0);
-  cam.dist = 26;
-  cam.pitch = 0.02;
-  cam.look = 0.05;
-  cam.az = -0.18;
-  applyCam();
 }
 
 /* ================= 状态 ================= */
@@ -1495,8 +1509,8 @@ function tick(now) {
     for (let i = 0; i < l.count; i++) {
       const o = i * 3;
       arr[o + 1] -= l.speed * dt;
-      arr[o] += Math.sin(t * .6 + l.seed[i]) * .20 * dt * 3 + .30 * dt;
-      arr[o + 2] += Math.cos(t * .45 + l.seed[i] * 1.3) * .12 * dt * 3;
+      arr[o] += Math.sin(t * .6 + l.seed[i]) * .20 * dt * 3 + .30 * dt * l.drift;
+      arr[o + 2] += Math.cos(t * .45 + l.seed[i] * 1.3) * .12 * dt * 3 * l.drift;
       if (arr[o + 1] < -1) { arr[o + 1] = l.height; arr[o] = (Math.random() - .5) * l.spread; arr[o + 2] = (Math.random() - .5) * l.spread; }
       if (arr[o] > half) arr[o] -= l.spread;
       if (arr[o + 2] > half) arr[o + 2] -= l.spread;
@@ -1547,9 +1561,16 @@ function tick(now) {
 }
 
 addEventListener('resize', () => {
+  const wasLand = camera.aspect > 1.25;
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  if ((camera.aspect > 1.25) !== wasLand) {
+    curSceneId = null;
+    if (window.VS_PENDING && window.VS3D) {
+      window.VS3D.show(window.VS_PENDING[0], window.VS_PENDING[1], window.VS_PENDING[2], window.VS_PENDING[3], window.VS_PENDING[4]);
+    }
+  }
 });
 
 snowFar.pts.position.set(0, 4, -4);
