@@ -500,6 +500,7 @@ let W, H;
 let stars = [];
 let snowList = [];
 let showSnow = false;
+let currentScene = "altay";
 function resize(){
   W = canvas.width = window.innerWidth;
   H = canvas.height = window.innerHeight;
@@ -510,17 +511,33 @@ function resize(){
 window.addEventListener("resize", resize);
 function createStars(){
   stars = [];
-  const count = Math.floor((W * H) / 900);
+  const count = Math.floor((W * H) / 1100);
   for(let i = 0; i < count; i++){
-    const isBright = Math.random() < 0.15;
+    const type = Math.random();
+    let size, baseA, spd, bright, hue;
+    if(type < 0.05){
+      size = Math.random() * 0.8 + 1.2;
+      baseA = Math.random() * 0.15 + 0.75;
+      spd = Math.random() * 0.001 + 0.0003;
+      bright = true;
+      hue = "200,220,255";
+    } else if(type < 0.3){
+      size = Math.random() * 0.5 + 0.5;
+      baseA = Math.random() * 0.2 + 0.45;
+      spd = Math.random() * 0.0008 + 0.0002;
+      bright = false;
+      hue = "255,255,255";
+    } else {
+      size = Math.random() * 0.4 + 0.2;
+      baseA = Math.random() * 0.25 + 0.25;
+      spd = Math.random() * 0.0005 + 0.0001;
+      bright = false;
+      hue = "255,255,255";
+    }
     stars.push({
       x: Math.random() * W, y: Math.random() * H * 0.8,
-      r: isBright ? Math.random() * 1.8 + 1.2 : Math.random() * 0.9 + 0.3,
-      baseA: isBright ? Math.random() * 0.3 + 0.7 : Math.random() * 0.4 + 0.2,
-      spd: Math.random() * 0.003 + 0.0008,
-      phase: Math.random() * Math.PI * 2,
-      bright: isBright,
-      hue: Math.random() < 0.3 ? "180,210,255" : "255,255,255"
+      r: size, baseA: baseA, spd: spd, phase: Math.random() * Math.PI * 2,
+      bright: bright, hue: hue
     });
   }
 }
@@ -553,6 +570,22 @@ function drawBackground(){
   gradSky.addColorStop(0.45,"#122444");
   gradSky.addColorStop(1,"#203860");
   ctx.fillStyle = gradSky; ctx.fillRect(0,0,W,H);
+
+  if(currentScene === "altay") drawAltay();
+  else if(currentScene === "tianshan") drawTianshan();
+  else if(currentScene === "shangri-la") drawShangrila();
+  else if(currentScene === "lhasa") drawNyangqentanglha();
+  else if(currentScene === "hulunbuir") drawHulunbuir();
+  else if(currentScene === "changbai") drawChangbai();
+  else drawGenericMountains();
+
+  const gradGround = ctx.createLinearGradient(0, H * 0.72, 0, H);
+  gradGround.addColorStop(0, "#a0b4d4");
+  gradGround.addColorStop(1, "#354460");
+  ctx.fillStyle = gradGround; ctx.fillRect(0, H * 0.72, W, H * 0.28);
+}
+
+function drawGenericMountains(){
   ctx.fillStyle = "#141f33";
   ctx.beginPath(); ctx.moveTo(0,H);
   for(let x = 0; x <= W; x += 120){
@@ -567,23 +600,166 @@ function drawBackground(){
     ctx.lineTo(x, h);
   }
   ctx.lineTo(W, H); ctx.fill();
-  const gradGround = ctx.createLinearGradient(0, H * 0.72, 0, H);
-  gradGround.addColorStop(0, "#a0b4d4");
-  gradGround.addColorStop(1, "#354460");
-  ctx.fillStyle = gradGround; ctx.fillRect(0, H * 0.72, W, H * 0.28);
+}
+
+function drawAltay(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.55);
+  ctx.lineTo(W * 0.15, H * 0.35);
+  ctx.lineTo(W * 0.3, H * 0.45);
+  ctx.lineTo(W * 0.5, H * 0.28);
+  ctx.lineTo(W * 0.7, H * 0.42);
+  ctx.lineTo(W * 0.85, H * 0.33);
+  ctx.lineTo(W, H * 0.5);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.fill();
+  ctx.fillStyle = "#0f1a2e";
+  for(let i = 0; i < 8; i++){
+    const bx = W * 0.05 + i * W * 0.12;
+    const by = H * 0.72;
+    ctx.fillRect(bx, by - 8, 3, 20);
+    ctx.fillRect(bx - 8, by - 2, 20, 2);
+  }
+  for(let i = 0; i < 5; i++){
+    const hx = W * 0.1 + i * W * 0.2;
+    const hy = H * 0.68;
+    ctx.fillStyle = "rgba(255,200,100,0.6)";
+    ctx.beginPath(); ctx.arc(hx, hy, 2, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawTianshan(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.6);
+  ctx.lineTo(W * 0.2, H * 0.25);
+  ctx.lineTo(W * 0.35, H * 0.4);
+  ctx.lineTo(W * 0.55, H * 0.2);
+  ctx.lineTo(W * 0.75, H * 0.38);
+  ctx.lineTo(W, H * 0.55);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.fill();
+  const lakeGrad = ctx.createLinearGradient(0, H * 0.65, 0, H * 0.75);
+  lakeGrad.addColorStop(0, "rgba(80,140,200,0.4)");
+  lakeGrad.addColorStop(1, "rgba(40,80,140,0.6)");
+  ctx.fillStyle = lakeGrad;
+  ctx.fillRect(0, H * 0.65, W, H * 0.1);
+}
+
+function drawShangrila(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.55);
+  ctx.lineTo(W * 0.25, H * 0.4);
+  ctx.lineTo(W * 0.5, H * 0.48);
+  ctx.lineTo(W * 0.75, H * 0.38);
+  ctx.lineTo(W, H * 0.52);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.fill();
+  const tx = W * 0.4;
+  const ty = H * 0.55;
+  ctx.fillStyle = "#2a3550";
+  ctx.fillRect(tx - 30, ty, 60, 40);
+  ctx.beginPath();
+  ctx.moveTo(tx - 35, ty);
+  ctx.lineTo(tx, ty - 15);
+  ctx.lineTo(tx + 35, ty);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,200,80,0.5)";
+  ctx.beginPath(); ctx.arc(tx, ty - 18, 3, 0, Math.PI * 2); ctx.fill();
+  for(let i = 0; i < 6; i++){
+    const fx = W * 0.15 + i * W * 0.05;
+    ctx.fillStyle = `rgba(${100 + i * 20},${150 - i * 10},200,0.6)`;
+    ctx.beginPath();
+    ctx.moveTo(fx, H * 0.5);
+    ctx.lineTo(fx + 10, H * 0.55);
+    ctx.lineTo(fx, H * 0.6);
+    ctx.fill();
+  }
+}
+
+function drawNyangqentanglha(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.5);
+  ctx.lineTo(W * 0.3, H * 0.3);
+  ctx.lineTo(W * 0.6, H * 0.42);
+  ctx.lineTo(W, H * 0.35);
+  ctx.lineTo(W, H * 0.65);
+  ctx.lineTo(W * 0.8, H * 0.6);
+  ctx.lineTo(W * 0.6, H * 0.7);
+  ctx.lineTo(W * 0.3, H * 0.62);
+  ctx.lineTo(0, H * 0.68);
+  ctx.fill();
+  const lakeGrad = ctx.createLinearGradient(0, H * 0.65, 0, H * 0.75);
+  lakeGrad.addColorStop(0, "rgba(100,160,220,0.35)");
+  lakeGrad.addColorStop(1, "rgba(50,100,170,0.5)");
+  ctx.fillStyle = lakeGrad;
+  ctx.fillRect(0, H * 0.65, W, H * 0.1);
+}
+
+function drawHulunbuir(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.5);
+  ctx.lineTo(W * 0.5, H * 0.45);
+  ctx.lineTo(W, H * 0.5);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.fill();
+  const yurtX = W * 0.35;
+  const yurtY = H * 0.65;
+  ctx.fillStyle = "#2a3550";
+  ctx.beginPath();
+  ctx.moveTo(yurtX - 25, yurtY);
+  ctx.lineTo(yurtX, yurtY - 18);
+  ctx.lineTo(yurtX + 25, yurtY);
+  ctx.fill();
+  ctx.fillRect(yurtX - 25, yurtY, 50, 15);
+  const yurtX2 = W * 0.65;
+  ctx.fillStyle = "#2a3550";
+  ctx.beginPath();
+  ctx.moveTo(yurtX2 - 20, yurtY + 5);
+  ctx.lineTo(yurtX2, yurtY - 10);
+  ctx.lineTo(yurtX2 + 20, yurtY + 5);
+  ctx.fill();
+  ctx.fillRect(yurtX2 - 20, yurtY + 5, 40, 12);
+}
+
+function drawChangbai(){
+  ctx.fillStyle = "#1a2740";
+  ctx.beginPath();
+  ctx.moveTo(0, H * 0.5);
+  ctx.lineTo(W * 0.2, H * 0.3);
+  ctx.lineTo(W * 0.5, H * 0.25);
+  ctx.lineTo(W * 0.8, H * 0.32);
+  ctx.lineTo(W, H * 0.48);
+  ctx.lineTo(W, H * 0.6);
+  ctx.lineTo(0, H * 0.6);
+  ctx.fill();
+  const lakeGrad = ctx.createLinearGradient(0, H * 0.55, 0, H * 0.65);
+  lakeGrad.addColorStop(0, "rgba(60,130,200,0.5)");
+  lakeGrad.addColorStop(1, "rgba(30,80,150,0.6)");
+  ctx.fillStyle = lakeGrad;
+  ctx.beginPath();
+  ctx.ellipse(W * 0.5, H * 0.58, W * 0.3, H * 0.06, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 function render(time){
   ctx.clearRect(0,0,W,H);
   drawBackground();
   for(const s of stars){
     const tw = Math.sin(time * s.spd + s.phase);
-    const alpha = s.baseA * (0.5 + 0.5 * tw);
+    const alpha = s.baseA * (0.85 + 0.15 * tw);
     if(s.bright){
-      const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 4);
-      g.addColorStop(0, `rgba(${s.hue},${alpha})`);
-      g.addColorStop(0.3, `rgba(${s.hue},${alpha * 0.4})`);
+      const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 2.5);
+      g.addColorStop(0, `rgba(${s.hue},${alpha * 0.6})`);
       g.addColorStop(1, `rgba(${s.hue},0)`);
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 4, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 2.5, 0, Math.PI * 2);
       ctx.fillStyle = g; ctx.fill();
     }
     ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -607,7 +783,10 @@ function render(time){
   }
   requestAnimationFrame(render);
 }
-window.drawScene = function(id, status){ resetSnow(status === "snow" || status === "sleet"); };
+window.drawScene = function(id, status){
+  currentScene = id;
+  resetSnow(status === "snow" || status === "sleet");
+};
 resize(); requestAnimationFrame(render);
 loadAll();
 setInterval(loadAll, CACHE_MIN * 60000);
